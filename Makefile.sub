@@ -17,12 +17,6 @@ hls-test-help:
 HLS_TEST_SRC = $(HLS_TEST_ROOT)/src
 HLS_TEST_BUILD = $(HLS_TEST_ROOT)/build
 
-# LLVM related variables
-LLVMCONFIG=llvm-config-16
-CLANG_BIN=$(shell $(LLVMCONFIG) --bindir)
-CLANG=$(CLANG_BIN)/clang
-LLC=$(CLANG_BIN)/llc
-
 # Verilator trace config
 VCD_TRACE = --trace -CFLAGS -DTRACE_SIGNALS
 FST_TRACE = --trace -CFLAGS -DTRACE_SIGNALS -CFLAGS -DFST

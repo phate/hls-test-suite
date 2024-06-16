@@ -18,6 +18,12 @@ JHLS ?= jhls
 HLS_TEST_ROOT ?= $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 FIRTOOL ?= firtool
 
+# LLVM related variables
+LLVMCONFIG=llvm-config-17
+CLANG_BIN=$(shell $(LLVMCONFIG) --bindir)
+CLANG=$(CLANG_BIN)/clang
+LLC=$(CLANG_BIN)/llc
+
 include Makefile.sub
 
 .PHONY: run

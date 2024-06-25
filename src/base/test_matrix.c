@@ -18,7 +18,7 @@ void reference( int *a, int *b, int *c, int size)
                 C_own(i,j) += A(i,k) * B(k,j);
 }
 
-void run( int *a, int *b, int *c, int size)
+void kernel( int *a, int *b, int *c, int size)
 {
     int i = 0;
     if(i<size) {
@@ -77,7 +77,7 @@ int main(int argc, char **argv, char **env) {
     int *c = (int*)malloc(size * size * sizeof(int));
     int *r = (int*)calloc(size * size, sizeof(int));
     init_dummy_data(a, b, c, size);
-    run(a, b, c, size);
+    kernel(a, b, c, size);
     reference(a, b, r, size);
     print_matrix(c, size);
     return check_matrix(c, r, size);

@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-int run(int a, int b) {
+int kernel(int a, int b) {
 	a = 1;
 	for (int i=0; i<5; i++) {
 		for (int j=0; j<5; j++) {
@@ -13,7 +13,7 @@ int run(int a, int b) {
 }
 
 int main(int argc, char** argv) {
-	int result = run(1, 2);
+	int result = kernel(1, 2);
 	printf("Result: %i\n", result);
 
 	// Check if correct result

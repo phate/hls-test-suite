@@ -2,13 +2,13 @@
 #include <stdio.h>
 #include <assert.h>
 
-int run(int a, int b){
+int kernel(int a, int b){
 	int c = ((a + b) * b - a) / b % a;
 	return c;
 }
 
 int main(int argc, char** argv){
-	int result = run(4, 8);
+	int result = kernel(4, 8);
 	printf("Result: %i\n", result);
 
 	// Check if correct result

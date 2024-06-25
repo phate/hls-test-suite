@@ -1,0 +1,49 @@
+name: Tests
+
+on:
+  pull_request:
+    branches: [ main ]
+
+env:
+  JLM_ROOT_DIR: /tmp/jlm
+  CIRCT_INSTALL_DIR: /tmp/circt
+
+jobs:
+
+  hls-test-suite:
+    runs-on: ubuntu-22.04
+    if: contains(github.event.pull_request.title, '[DisableCI]') == false
+    steps:
+    - uses: actions/checkout@v4
+    - name: "Install packages"
+      uses: ./.github/actions/InstallPackages
+
+    - name: "Clone jlm"
+      run: git clone https://github.com/phate/jlm.git $JLM_ROOT_DIR
+      shell: bash
+
+    - name: "Build CIRCT and configure and build jlm"
+      run: |
+        cd $JLM_ROOT_DIR && \
+        ./scripts/build-circt.sh --install-path $CIRCT_INSTALL_DIR && \
+        ./configure.sh --enable-hls $CIRCT_INSTALL_DIR --target release --enable-asserts CXX=clang++ && \
+        make -j `nproc` -O all
+      shell: bash
+
+    - name: "MLIR libs"
+      run: |
+        if ! [ -f /usr/lib/x86_64-linux-gnu/libMLIR.so ]; then
+          sudo ln -s /usr/lib/llvm-17/lib/libMLIR.so.17 /usr/lib/x86_64-linux-gnu/
+          sudo ln -s /usr/lib/llvm-17/lib/libMLIR.so.17 /usr/lib/x86_64-linux-gnu/libMLIR.so
+        fi
+      shell: bash
+
+    - name: "Add executables to PATH"
+      run: |
+        echo "${JLM_ROOT_DIR}/build" >> $GITHUB_PATH && \
+        echo "${CIRCT_INSTALL_DIR}/bin" >> $GITHUB_PATH
+      shell: bash
+
+    - name: "Run HLS test suite"
+      run: make run
+      shell: bash

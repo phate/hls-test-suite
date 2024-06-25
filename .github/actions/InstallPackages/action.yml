@@ -1,0 +1,39 @@
+name: "Install packages"
+description: "Installs packages that the hls-test-suite depends on."
+
+inputs:
+  llvm-version:
+    description: "LLVM/ version that is installed"
+    default: "17"
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Get LLVM apt key"
+      run: |
+        export HAS_LLVM_REPOSITORY=$(find /etc/apt/ -name *.list | xargs cat | grep llvm-toolchain-jammy-${{inputs.llvm-version}})
+        if [[ -z $HAS_LLVM_REPOSITORY ]]; then
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+          sudo add-apt-repository --no-update deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${{inputs.llvm-version}} main
+        fi
+      shell: bash
+
+    - name: "Update apt sources"
+      run: sudo apt-get update
+      shell: bash
+
+    - name: "Install LLVM and clang package"
+      run: |
+        sudo apt-get install llvm-${{inputs.llvm-version}}-dev clang-${{inputs.llvm-version}} mlir-${{inputs.llvm-version}}-tools libmlir-${{inputs.llvm-version}}-dev
+        pip install "lit~=${{inputs.llvm-version}}.0"
+        pip show lit
+      shell: bash
+
+    - name: "Install ninja package"
+      run: sudo apt-get install ninja-build
+      shell: bash
+
+    - name: "Install verilator package"
+      run: sudo apt-get install verilator
+      shell: bash

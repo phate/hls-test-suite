@@ -3,7 +3,7 @@
 
 // test local memories and aliasing with a pseudo processor without branching/jumps
 
-void run(int * program, int * data){
+void kernel(int * program, int * data){
     int end = 0;
     int pc = 0;
     int reg[256];
@@ -74,7 +74,7 @@ int main(int argc, char** argv){
             0x01010101, // ADD 1, 1
             0x00000104, // END 1
     };
-    run(program, data);
+    kernel(program, data);
     //TODO: use loads and stores to check correctness
     return 0;
 }

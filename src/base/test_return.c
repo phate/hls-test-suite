@@ -2,12 +2,12 @@
 #include <stdio.h>
 #include <assert.h>
 
-int run(){
+int kernel(){
 	return 5;
 }
 
 int main(int argc, char** argv){
-	int result = run();
+	int result = kernel();
 	printf("Result: %i\n", result);
 
 	// Check if correct result

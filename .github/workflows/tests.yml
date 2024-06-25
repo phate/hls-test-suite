@@ -38,5 +38,5 @@ jobs:
       shell: bash
 
     - name: "Run HLS test suite"
-      run: make run
+      run: make -j `nproc` -O run
       shell: bash

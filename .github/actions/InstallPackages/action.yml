@@ -23,17 +23,9 @@ runs:
       run: sudo apt-get update
       shell: bash
 
-    - name: "Install LLVM and clang package"
+    - name: "Install necessary tools and packages"
       run: |
-        sudo apt-get install llvm-${{inputs.llvm-version}}-dev clang-${{inputs.llvm-version}} mlir-${{inputs.llvm-version}}-tools libmlir-${{inputs.llvm-version}}-dev
+        sudo apt-get install llvm-${{inputs.llvm-version}}-dev clang-${{inputs.llvm-version}} mlir-${{inputs.llvm-version}}-tools libmlir-${{inputs.llvm-version}}-dev ninja-build verilator
         pip install "lit~=${{inputs.llvm-version}}.0"
         pip show lit
-      shell: bash
-
-    - name: "Install ninja package"
-      run: sudo apt-get install ninja-build
-      shell: bash
-
-    - name: "Install verilator package"
-      run: sudo apt-get install verilator
       shell: bash

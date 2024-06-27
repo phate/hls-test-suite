@@ -35,6 +35,7 @@ hls-test-run: hls-test
 hls-test: \
 	hls-test-base \
 	hls-test-benchmark \
+	hls-test-polybench \
 	hls-test-dynamatic \
 
 # Generic build target used by the various tests
@@ -42,7 +43,7 @@ hls-test: \
 $(HLS_TEST_BUILD)/%.hls: $(HLS_TEST_SRC)/%.c
 	@mkdir -p $(@D)
 	@set -e && printf '$(BLUE)Building: $(NC)%s\n' $*
-	@$(JHLS) $^ --circt --hls-function=kernel -o $@ > /dev/null
+	@$(JHLS) $^ $(HLS_TEST_ADDITIONAL_SRC) $(HLS_TEST_ADDITIONAL_FLAGS) --circt --hls-function=kernel -o $@ > /dev/null
 	@for file in $@.re*.ll ; do $(LLC) -O0 --relocation-model=pic -filetype=obj -o $$file.o $$file ; done
 	@+TMPDIR=`mktemp -d`; \
 	$(FIRTOOL) -format=fir --verilog $@.fir > $$TMPDIR/jlm_hls.v; \
@@ -96,6 +97,17 @@ HLS_TEST_BASE_FILES = \
 
 .PHONY: hls-test-base
 hls-test-base: $(patsubst %, hls-test-run/%.hls, $(HLS_TEST_BASE_FILES))
+
+HLS_TEST_POLYBENCH_FILES = \
+	polybench/correlation \
+	polybench/jacobi_1d \
+
+.PHONY: hls-test-polybench
+hls-test-polybench: HLS_TEST_FUNCTION=kernel
+hls-test-polybench: HLS_TEST_ADDITIONAL_SRC = $(HLS_TEST_SRC)/polybench/polybench.c
+hls-test-polybench: HLS_TEST_ADDITIONAL_FLAGS = -I$(HLS_TEST_SRC)/polybench -D=DATA_TYPE_IS_INT -D=POLYBENCH_DUMP_ARRAYS -D=POLYBENCH_USE_C99_PROTO -D=MINI_DATASET
+hls-test-polybench: $(patsubst %, $(HLS_TEST_BUILD)/%.hls, $(HLS_TEST_POLYBENCH_FILES))
+hls-test-polybench: $(patsubst %, hls-test-run/%.hls, $(HLS_TEST_POLYBENCH_FILES))
 
 
 HLS_TEST_DYNAMATIC_FILES = \

@@ -8,14 +8,12 @@ on:
         description: 'LLVM version'
         default: '17'
         required: false
-        type: string
 
 env:
   JLM_ROOT_DIR: /tmp/jlm
   CIRCT_INSTALL_DIR: /tmp/circt
 
 jobs:
-
   hls-test-suite:
     runs-on: ubuntu-22.04
     if: contains(github.event.pull_request.title, '[DisableCI]') == false

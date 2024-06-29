@@ -3,9 +3,8 @@ description: "Installs packages that the hls-test-suite depends on."
 
 inputs:
   llvm-version:
-    description: "LLVM/ version that is installed"
-    default: "17"
-    required: false
+    description: "LLVM/MLIR version that is installed"
+    required: true
 
 runs:
   using: "composite"

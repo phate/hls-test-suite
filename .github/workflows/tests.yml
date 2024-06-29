@@ -3,7 +3,6 @@ name: Tests
 on:
   pull_request:
     branches: [ main ]
-  workflow_call:
     inputs:
       llvm-version:
         description: 'LLVM version'

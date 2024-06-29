@@ -3,12 +3,6 @@ name: Tests
 on:
   pull_request:
     branches: [ main ]
-  workflow_dispatch:
-    inputs:
-      llvm-version:
-        description: 'LLVM version'
-        default: '17'
-        required: false
 
 env:
   JLM_ROOT_DIR: /tmp/jlm
@@ -35,14 +29,6 @@ jobs:
         ./scripts/build-circt.sh --install-path $CIRCT_INSTALL_DIR && \
         ./configure.sh --enable-hls $CIRCT_INSTALL_DIR --target release --enable-asserts CXX=clang++ && \
         make -j `nproc` -O all
-      shell: bash
-
-    - name: "MLIR lib"
-      run: |
-        if ! [ -f /usr/lib/x86_64-linux-gnu/libMLIR.so ]; then
-          sudo ln -s /usr/lib/llvm-${{inputs.llvm-version}}/lib/libMLIR.so.${{inputs.llvm-version}} /usr/lib/x86_64-linux-gnu/
-          sudo ln -s /usr/lib/llvm-${{inputs.llvm-version}}/lib/libMLIR.so.${{inputs.llvm-version}} /usr/lib/x86_64-linux-gnu/libMLIR.so
-        fi
       shell: bash
 
     - name: "Add executables to PATH"

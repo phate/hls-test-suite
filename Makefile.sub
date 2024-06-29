@@ -44,10 +44,10 @@ $(HLS_TEST_BUILD)/%.hls: $(HLS_TEST_SRC)/%.c
 	@mkdir -p $(@D)
 	@set -e && printf '$(BLUE)Building: $(NC)%s\n' $*
 	@$(JHLS) $^ $(HLS_TEST_ADDITIONAL_SRC) $(HLS_TEST_ADDITIONAL_FLAGS) --circt --hls-function=kernel -o $@ > /dev/null
-	@for file in $@.re*.ll ; do $(LLC) -O0 --relocation-model=pic -filetype=obj -o $$file.o $$file ; done
+	@$(LLVM_LINK) $@.re*.ll | $(LLC) -O3 --relocation-model=pic -filetype=obj -o $@.o
 	@+TMPDIR=`mktemp -d`; \
 	$(FIRTOOL) -format=fir --verilog $@.fir > $$TMPDIR/jlm_hls.v; \
-	VERILATOR_ROOT=/usr/share/verilator verilator_bin $(VERILATOR_TRACE) --cc --build --exe -Wno-WIDTH -Mdir $$TMPDIR -MAKEFLAGS CXX=g++ -CFLAGS -g --assert -CFLAGS " -fPIC" -o $@ $$TMPDIR/jlm_hls.v $@*.o $@.harness.cpp > /dev/null
+	VERILATOR_ROOT=/usr/share/verilator verilator_bin $(VERILATOR_TRACE) --cc --build --exe -Wno-WIDTH -Mdir $$TMPDIR -MAKEFLAGS CXX=g++ -CFLAGS -g --assert -CFLAGS " -fPIC" -o $@ $$TMPDIR/jlm_hls.v $@.o $@.harness.cpp > /dev/null
 
 # This target is used for running and checking built tests
 .PHONY: hls-test-run/%.hls

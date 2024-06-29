@@ -23,6 +23,7 @@ LLVMCONFIG=llvm-config-17
 CLANG_BIN=$(shell $(LLVMCONFIG) --bindir)
 CLANG=$(CLANG_BIN)/clang
 LLC=$(CLANG_BIN)/llc
+LLVM_LINK=$(CLANG_BIN)/llvm-link
 
 LD_LIBRARY_PATH = $(shell $(LLVMCONFIG) --libdir)
 

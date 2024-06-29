@@ -23,7 +23,7 @@ jobs:
     - name: "Install packages"
       uses: ./.github/actions/InstallPackages
       with:
-        llvm-version: ${{inputs.llvm-version}} 
+        llvm-version: 17
 
     - name: "Clone jlm"
       run: git clone https://github.com/phate/jlm.git $JLM_ROOT_DIR

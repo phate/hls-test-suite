@@ -2,13 +2,13 @@
 #include <stdio.h>
 #include <assert.h>
 
-int run(int*  a){
+int kernel(int*  a){
 	return *a;
 }
 
 int main(int argc, char** argv){
     int i = 5;
-	int result = run(&i);
+	int result = kernel(&i);
 	printf("Result: %i\n", result);
 
 	// Check if correct result

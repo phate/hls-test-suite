@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-int run(int a, int b){
+int kernel(int a, int b){
 	if (a == b) {
 		return -1;
 	} else if (a > b) {
@@ -19,7 +19,7 @@ int run(int a, int b){
 }
 
 int main(int argc, char** argv){
-	int result = run(4, 8);
+	int result = kernel(4, 8);
 	printf("Result: %i\n", result);
 
 	// Check if correct result

@@ -25,6 +25,8 @@ CLANG=$(CLANG_BIN)/clang
 LLC=$(CLANG_BIN)/llc
 LLVM_LINK=$(CLANG_BIN)/llvm-link
 
+LD_LIBRARY_PATH = $(shell $(LLVMCONFIG) --libdir)
+
 include Makefile.sub
 
 .PHONY: run

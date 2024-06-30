@@ -1,0 +1,38 @@
+name: "Install packages"
+description: "Installs packages that the hls-test-suite depends on."
+
+inputs:
+  llvm-version:
+    description: "LLVM/MLIR version that is installed"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Get LLVM apt key"
+      run: |
+        export HAS_LLVM_REPOSITORY=$(find /etc/apt/ -name *.list | xargs cat | grep llvm-toolchain-jammy-${{inputs.llvm-version}})
+        if [[ -z $HAS_LLVM_REPOSITORY ]]; then
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+          sudo add-apt-repository --no-update deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${{inputs.llvm-version}} main
+        fi
+      shell: bash
+
+    - name: "Update apt sources"
+      run: sudo apt-get update
+      shell: bash
+
+    - name: "Install necessary tools and packages"
+      run: |
+        sudo apt-get install llvm-${{inputs.llvm-version}}-dev clang-${{inputs.llvm-version}} mlir-${{inputs.llvm-version}}-tools libmlir-${{inputs.llvm-version}}-dev ninja-build verilator
+        pip install "lit~=${{inputs.llvm-version}}.0"
+        pip show lit
+      shell: bash
+
+    - name: "Create MLIR library links"
+      run: |
+        if ! [ -f /usr/lib/x86_64-linux-gnu/libMLIR.so ]; then
+          sudo ln -s /usr/lib/llvm-${{inputs.llvm-version}}/lib/libMLIR.so.${{inputs.llvm-version}} /usr/lib/x86_64-linux-gnu/
+          sudo ln -s /usr/lib/llvm-${{inputs.llvm-version}}/lib/libMLIR.so.${{inputs.llvm-version}} /usr/lib/x86_64-linux-gnu/libMLIR.so
+        fi
+      shell: bash

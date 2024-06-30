@@ -103,10 +103,8 @@ HLS_TEST_POLYBENCH_FILES = \
 	polybench/jacobi_1d \
 
 .PHONY: hls-test-polybench
-hls-test-polybench: HLS_TEST_FUNCTION=kernel
 hls-test-polybench: HLS_TEST_ADDITIONAL_SRC = $(HLS_TEST_SRC)/polybench/polybench.c
 hls-test-polybench: HLS_TEST_ADDITIONAL_FLAGS = -I$(HLS_TEST_SRC)/polybench -D=DATA_TYPE_IS_INT -D=POLYBENCH_DUMP_ARRAYS -D=POLYBENCH_USE_C99_PROTO -D=MINI_DATASET
-hls-test-polybench: $(patsubst %, $(HLS_TEST_BUILD)/%.hls, $(HLS_TEST_POLYBENCH_FILES))
 hls-test-polybench: $(patsubst %, hls-test-run/%.hls, $(HLS_TEST_POLYBENCH_FILES))
 
 

@@ -44,9 +44,7 @@ $(HLS_TEST_BUILD)/%.hls: $(HLS_TEST_SRC)/%.c
 	@mkdir -p $(@D)
 	@set -e && printf '$(BLUE)Building: $(NC)%s\n' $*
 	@$(JHLS) $^ $(HLS_TEST_ADDITIONAL_SRC) $(HLS_TEST_ADDITIONAL_FLAGS) --circt --hls-function=kernel -o $@ > /dev/null
-	@+TMPDIR=`mktemp -d`; \
-	cp $@.v $$TMPDIR/jlm_hls.v; \
-	VERILATOR_ROOT=/usr/share/verilator verilator_bin $(VERILATOR_TRACE) --cc --build --exe -Wno-WIDTH -Mdir $$TMPDIR -MAKEFLAGS CXX=g++ -CFLAGS -g --assert -CFLAGS " -fPIC" -o $@ $$TMPDIR/jlm_hls.v $@.o $@.harness.cpp > /dev/null
+	@+VERILATOR_ROOT=/usr/share/verilator verilator_bin $(VERILATOR_TRACE) --cc --build --exe -Wno-WIDTH -Mdir `mktemp -d` -MAKEFLAGS CXX=g++ -CFLAGS -g --assert -CFLAGS " -fPIC" -o $@ $@.v $@.o $@.harness.cpp > /dev/null
 
 # This target is used for running and checking built tests
 .PHONY: hls-test-run/%.hls

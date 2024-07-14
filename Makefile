@@ -14,17 +14,8 @@ endef
 help:
 	@$(HELP_TEXT)
 
-JHLS ?= jhls
+JHLS = jhls
 HLS_TEST_ROOT ?= $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-
-# LLVM related variables
-LLVMCONFIG=llvm-config-17
-CLANG_BIN=$(shell $(LLVMCONFIG) --bindir)
-CLANG=$(CLANG_BIN)/clang
-LLC=$(CLANG_BIN)/llc
-LLVM_LINK=$(CLANG_BIN)/llvm-link
-
-LD_LIBRARY_PATH = $(shell $(LLVMCONFIG) --libdir)
 
 include Makefile.sub
 

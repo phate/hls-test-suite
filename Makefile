@@ -16,7 +16,6 @@ help:
 
 JHLS ?= jhls
 HLS_TEST_ROOT ?= $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-FIRTOOL ?= firtool
 
 # LLVM related variables
 LLVMCONFIG=llvm-config-17

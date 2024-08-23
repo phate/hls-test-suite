@@ -44,7 +44,7 @@ $(HLS_TEST_BUILD)/%.hls: $(HLS_TEST_SRC)/%.c
 	@mkdir -p $(@D)
 	@set -e && printf '$(BLUE)Building: $(NC)%s\n' $*
 	@$(JHLS) $^ $(HLS_TEST_ADDITIONAL_SRC) $(HLS_TEST_ADDITIONAL_FLAGS) --circt --hls-function=kernel -o $@ > /dev/null
-	@set -e ; \
+	@+set -e ; \
 	VERILATOR_TMP_DIR=`mktemp -d` ; \
 	trap "rm -r $$VERILATOR_TMP_DIR" EXIT ; \
 	VERILATOR_ROOT=/usr/share/verilator ; \

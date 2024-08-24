@@ -26,8 +26,8 @@ jobs:
     - name: "Build CIRCT and configure and build jlm"
       run: |
         cd $JLM_ROOT_DIR && \
-        ./scripts/build-circt.sh --install-path $CIRCT_INSTALL_DIR && \
-        ./configure.sh --enable-hls $CIRCT_INSTALL_DIR --target release --enable-asserts CXX=clang++ && \
+        ./scripts/build-circt.sh && \
+        ./configure.sh --enable-hls --target release --enable-asserts CXX=clang++ && \
         make -j `nproc` -O all
       shell: bash
 

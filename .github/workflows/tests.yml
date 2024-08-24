@@ -6,7 +6,6 @@ on:
 
 env:
   JLM_ROOT_DIR: /tmp/jlm
-  CIRCT_INSTALL_DIR: /tmp/circt
 
 jobs:
   hls-test-suite:
@@ -17,7 +16,7 @@ jobs:
     - name: "Install packages"
       uses: ./.github/actions/InstallPackages
       with:
-        llvm-version: 17
+        llvm-version: 18
 
     - name: "Clone jlm"
       run: git clone https://github.com/phate/jlm.git $JLM_ROOT_DIR
@@ -26,15 +25,15 @@ jobs:
     - name: "Build CIRCT and configure and build jlm"
       run: |
         cd $JLM_ROOT_DIR && \
-        ./scripts/build-circt.sh --install-path $CIRCT_INSTALL_DIR && \
-        ./configure.sh --enable-hls $CIRCT_INSTALL_DIR --target release --enable-asserts CXX=clang++ && \
+        ./scripts/build-circt.sh && \
+        ./configure.sh --enable-hls --target release --enable-asserts CXX=clang++ && \
         make -j `nproc` -O all
       shell: bash
 
     - name: "Add executables to PATH"
       run: |
         echo "${JLM_ROOT_DIR}/build" >> $GITHUB_PATH && \
-        echo "${CIRCT_INSTALL_DIR}/bin" >> $GITHUB_PATH
+        echo "${JLM_ROOT_DIR}/usr/bin" >> $GITHUB_PATH
       shell: bash
 
     - name: "Run HLS test suite"

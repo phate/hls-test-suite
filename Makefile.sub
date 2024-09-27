@@ -56,10 +56,19 @@ hls-test-run/%.hls: $(HLS_TEST_BUILD)/%.hls
 	@set -e ; \
 	printf '$(BLUE)Running: $(NC)%s\n' $* ; \
 	cd $(HLS_TEST_BUILD) ; \
-	if $*.hls >> /dev/null 2>&1 ; then \
+	if $*.hls | grep 'finished - took' | tr -dc '0-9' > $(HLS_TEST_BUILD)/$*.cycles ; then \
 		printf '    $(GREEN)%s\n$(NC)' "SUCCESS" ; \
 	else \
 		printf '    $(RED)%s$(NC)%s\n' "FAILURE" ; \
+		exit 1 ; \
+	fi ; \
+	DIFF=$$(diff -q $(HLS_TEST_BUILD)/$*.cycles $(HLS_TEST_SRC)/$*.cycles) ; \
+	if [ "$$DIFF" != "" ]; then \
+		GOLDEN=$$(cat $(HLS_TEST_SRC)/$*.cycles) ; \
+		CYCLES=$$(cat $(HLS_TEST_BUILD)/$*.cycles) ; \
+		printf '    $(RED)%s$(NC)%s\n' "The execution time has changed" ; \
+		printf '    $(GREEN)    %s$(NC)%s\n' "Golden cycle time: $${GOLDEN}" ; \
+		printf '    $(RED)    %s$(NC)%s\n' "Simulated cycles: $${CYCLES}" ; \
 		exit 1 ; \
 	fi ;
 
@@ -80,8 +89,17 @@ hls-test-run-dynamatic/%.hls: $(HLS_TEST_BUILD)/%.hls
 		exit -1 ; \
 	else \
 		printf '    $(GREEN)%s\n$(NC)' "SUCCESS" ; \
+	fi ; \
+	grep 'finished - took' $*.log | tr -dc '0-9' > $(HLS_TEST_BUILD)/$*.cycles ; \
+	DIFF=$$(diff -q $(HLS_TEST_BUILD)/$*.cycles $(HLS_TEST_SRC)/$*.cycles) ; \
+	if [ "$$DIFF" != "" ]; then \
+		GOLDEN=$$(cat $(HLS_TEST_SRC)/$*.cycles) ; \
+		CYCLES=$$(cat $(HLS_TEST_BUILD)/$*.cycles) ; \
+		printf '    $(RED)%s$(NC)%s\n' "The execution time has changed" ; \
+		printf '    $(GREEN)    %s$(NC)%s\n' "Golden cycle time: $${GOLDEN}" ; \
+		printf '    $(RED)    %s$(NC)%s\n' "Simulated cycles: $${CYCLES}" ; \
+		exit 1 ; \
 	fi ;
-
 
 HLS_TEST_BASE_FILES = \
 	base/test_return \

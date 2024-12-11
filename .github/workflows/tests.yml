@@ -22,11 +22,10 @@ jobs:
       run: git clone https://github.com/phate/jlm.git $JLM_ROOT_DIR
       shell: bash
 
-
     - name: "Get the commit used for building CIRCT and use it as the cache key"
       id: get-circt-hash
       run: |
-        echo "hash=$(./scripts/build-circt.sh --get-commit-hash)" >> $GITHUB_OUTPUT
+        echo "hash=$($JLM_ROOT_DIR/scripts/build-circt.sh --get-commit-hash)" >> $GITHUB_OUTPUT
       shell: bash
 
     - name: "Try to fetch CIRCT from the cache"

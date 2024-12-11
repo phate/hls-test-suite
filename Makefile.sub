@@ -2,7 +2,7 @@ define HELP_TEXT_HLS_TEST
 echo ""
 echo "HLS_TEST_SUITE Make Targets"
 echo "--------------------------------------------------------------------------------"
-echo "hls-test               Compiles and runs all tests"
+echo "hls-test-all           Compiles and runs all tests"
 echo "hls-test-base          Compiles and runs basic tests"
 echo "hls-test-dynamatic     Compiles and runs all test from the dynamitcs git repo"
 echo "hls-test-polybench     Compiles and runs supported polybench benchmarks"
@@ -28,78 +28,79 @@ RED=\033[0;31m
 GREEN=\033[0;32m
 BLUE=\033[1;34m
 
-.PHONY: hls-test-run
-hls-test-run: hls-test
-
-.PHONY: hls-test
-hls-test: \
-	hls-test-base \
-	hls-test-benchmark \
-	hls-test-polybench \
-	hls-test-dynamatic \
-
-# Generic build target used by the various tests
+# Generic build target turning test .c files into executable binaries using jhls and Verilator
 .PRECIOUS: $(HLS_TEST_BUILD)/%.hls
 $(HLS_TEST_BUILD)/%.hls: $(HLS_TEST_SRC)/%.c
+	@printf '$(BLUE)Building: $(NC)%s\n' "$*"
+
+#   Ensure target folder exists
 	@mkdir -p $(@D)
-	@set -e && printf '$(BLUE)Building: $(NC)%s\n' $*
-	@$(JHLS) $^ $(HLS_TEST_ADDITIONAL_SRC) $(HLS_TEST_ADDITIONAL_FLAGS) --circt --hls-function=kernel -o $@ > /dev/null
+
+#   Creates the files %.hls.v, %.hls.harness.cpp and %.hls.o
+	@$(JHLS) $< $(HLS_TEST_ADDITIONAL_SRC) $(HLS_TEST_ADDITIONAL_FLAGS) --circt --hls-function=kernel -o $@ > /dev/null 2>&1
+
+#   Use verilator to combine the files into a single executable %.hls
 	@+set -e ; \
 	VERILATOR_TMP_DIR=`mktemp -d` ; \
 	trap "rm -r $$VERILATOR_TMP_DIR" EXIT ; \
 	VERILATOR_ROOT=/usr/share/verilator ; \
 	verilator_bin $(VERILATOR_TRACE) --cc --build --exe -Wno-WIDTH -Mdir $$VERILATOR_TMP_DIR -MAKEFLAGS CXX=g++ -CFLAGS -g --assert -CFLAGS " -fPIC" -o $@ $@.v $@.o $@.harness.cpp > /dev/null
 
-# This target is used for running and checking built tests
-.PHONY: hls-test-run/%.hls
-hls-test-run/%.hls: $(HLS_TEST_BUILD)/%.hls
-	@set -e ; \
-	printf '$(BLUE)Running: $(NC)%s\n' $* ; \
-	cd $(HLS_TEST_BUILD) ; \
-	if $*.hls | grep 'finished - took' | tr -dc '0-9' > $(HLS_TEST_BUILD)/$*.cycles ; then \
-		printf '    $(GREEN)%s\n$(NC)' "SUCCESS" ; \
-	else \
-		printf '    $(RED)%s$(NC)%s\n' "FAILURE" ; \
-		exit 1 ; \
-	fi ; \
-	DIFF=$$(diff -q $(HLS_TEST_BUILD)/$*.cycles $(HLS_TEST_SRC)/$*.cycles) ; \
-	if [ "$$DIFF" != "" ]; then \
-		GOLDEN=$$(cat $(HLS_TEST_SRC)/$*.cycles) ; \
-		CYCLES=$$(cat $(HLS_TEST_BUILD)/$*.cycles) ; \
-		printf '    $(RED)%s$(NC)%s\n' "The execution time has changed" ; \
-		printf '    $(GREEN)    %s$(NC)%s\n' "Golden cycle time: $${GOLDEN}" ; \
-		printf '    $(RED)    %s$(NC)%s\n' "Simulated cycles: $${CYCLES}" ; \
-		exit 1 ; \
-	fi ;
+# Execute the program, placing its output in %.hls.log
+.PRECIOUS: $(HLS_TEST_BUILD)/%.hls.log
+$(HLS_TEST_BUILD)/%.hls.log: $(HLS_TEST_BUILD)/%.hls
+	@printf '$(BLUE)Running: $(NC)%s\n' "$*"
+	@cd $(@D) && ./$(*F).hls > $(@F)
 
-# This target is used for running and checking built Dynamatic tests
-.PHONY: hls-test-run-dynamatic/%.hls
-hls-test-run-dynamatic/%.hls: $(HLS_TEST_BUILD)/%.hls
-	@printf '$(BLUE)Running: $(NC)%s\n' $* ; \
-	cd $(HLS_TEST_BUILD) ; \
-	$*.hls > $*.log ; \
-	tail -n +2 $*.log > $*.log2 ; \
+# Compares the cycle count between the executed HLS, and the golden reference. exit if different
+.PHONY: cycle-compare/%
+cycle-compare/%: $(HLS_TEST_BUILD)/%.hls.log $(HLS_TEST_SRC)/%.cycles
+	@set -e ; \
+	CYCLES=$$(grep 'finished - took' $< | tr -dc '0-9') ; \
+	GOLDEN=$$(cat $(HLS_TEST_SRC)/$*.cycles) ; \
 	\
-	gcc $(HLS_TEST_SRC)/$*.c -o $*.gcc ; \
-	$*.gcc > $*.gcc.log ; \
-	\
-	DIFF=$$(diff -q $*.log2 $*.gcc.log) ; \
+	if [ "$$CYCLES" != "$$GOLDEN" ] ; then \
+		printf '$(RED)%s$(NC)\n    $(GREEN)%s$(NC)\n    $(RED)%s$(NC)\n' \
+	    "The execution time of $* has changed" \
+	    "Golden cycle time: $$(cat $(HLS_TEST_SRC)/$*.cycles)" \
+	    "Simulated cycles: $${CYCLES}" ; \
+	    exit 1 ; \
+	fi
+
+# Compile the program using gcc, execute it, and place its output in %.gcc.log
+$(HLS_TEST_BUILD)/%.gcc.log: $(HLS_TEST_SRC)/%.c
+	@printf '$(BLUE)Building with gcc: $(NC)%s\n' "$*"
+	@gcc $(HLS_TEST_SRC)/$*.c -o $(HLS_TEST_BUILD)/$*.gcc
+	@cd $(@D) && ./$(*F).gcc > $(@F)
+
+# Compares the output from running the given test using HLS + verilator, to running it with gcc
+.PHONY: gcc-compare/%
+gcc-compare/%: $(HLS_TEST_BUILD)/%.hls.log $(HLS_TEST_BUILD)/%.gcc.log
+	@set -e ; \
+	DIFF=$$(tail -n +2 $< | diff - $(HLS_TEST_BUILD)/$*.gcc.log) ; \
 	if [ "$$DIFF" != "" ]; then \
-		printf '    $(RED)%s$(NC)%s\n' "FAILURE" ; exit 1 ; \
-		exit -1 ; \
-	else \
-		printf '    $(GREEN)%s\n$(NC)' "SUCCESS" ; \
-	fi ; \
-	grep 'finished - took' $*.log | tr -dc '0-9' > $(HLS_TEST_BUILD)/$*.cycles ; \
-	DIFF=$$(diff -q $(HLS_TEST_BUILD)/$*.cycles $(HLS_TEST_SRC)/$*.cycles) ; \
-	if [ "$$DIFF" != "" ]; then \
-		GOLDEN=$$(cat $(HLS_TEST_SRC)/$*.cycles) ; \
-		CYCLES=$$(cat $(HLS_TEST_BUILD)/$*.cycles) ; \
-		printf '    $(RED)%s$(NC)%s\n' "The execution time has changed" ; \
-		printf '    $(GREEN)    %s$(NC)%s\n' "Golden cycle time: $${GOLDEN}" ; \
-		printf '    $(RED)    %s$(NC)%s\n' "Simulated cycles: $${CYCLES}" ; \
+		printf '    $(RED)%s$(NC): %s\n' "FAILURE" "$*" ; \
 		exit 1 ; \
-	fi ;
+	fi
+
+# Target used for running tests and comparing the cycle count to the reference
+.PHONY: hls-test/%
+hls-test/%: cycle-compare/%
+	@printf '    $(GREEN)%s$(NC): %s\n' "SUCCESS" "$*"
+
+# Target for running tests and comparing cycle counts, and also comparing output against gcc
+.PHONY: hls-test-with-gcc/%
+hls-test-with-gcc/%: cycle-compare/% gcc-compare/%
+	@printf '    $(GREEN)%s$(NC): %s\n' "SUCCESS" "$*"
+
+
+.PHONY: hls-test-all
+hls-test-all: \
+	hls-test-base \
+	hls-test-benchmark \
+	hls-test-polybench \
+	hls-test-dynamatic
+
 
 HLS_TEST_BASE_FILES = \
 	base/test_return \
@@ -115,7 +116,7 @@ HLS_TEST_BASE_FILES = \
 	base/test_cpu \
 
 .PHONY: hls-test-base
-hls-test-base: $(patsubst %, hls-test-run/%.hls, $(HLS_TEST_BASE_FILES))
+hls-test-base: $(patsubst %, hls-test/%, $(HLS_TEST_BASE_FILES))
 
 HLS_TEST_POLYBENCH_FILES = \
 	polybench/correlation \
@@ -124,7 +125,7 @@ HLS_TEST_POLYBENCH_FILES = \
 .PHONY: hls-test-polybench
 hls-test-polybench: HLS_TEST_ADDITIONAL_SRC = $(HLS_TEST_SRC)/polybench/polybench.c
 hls-test-polybench: HLS_TEST_ADDITIONAL_FLAGS = -I$(HLS_TEST_SRC)/polybench -D=DATA_TYPE_IS_INT -D=POLYBENCH_DUMP_ARRAYS -D=POLYBENCH_USE_C99_PROTO -D=MINI_DATASET
-hls-test-polybench: $(patsubst %, hls-test-run/%.hls, $(HLS_TEST_POLYBENCH_FILES))
+hls-test-polybench: $(patsubst %, hls-test/%, $(HLS_TEST_POLYBENCH_FILES))
 
 
 HLS_TEST_DYNAMATIC_FILES = \
@@ -182,7 +183,7 @@ HLS_TEST_DYNAMATIC_FILES = \
 #	dynamatic/test_memory_5 \
 
 .PHONY: hls-test-dynamatic
-hls-test-dynamatic: $(patsubst %, hls-test-run-dynamatic/%.hls, $(HLS_TEST_DYNAMATIC_FILES))
+hls-test-dynamatic: $(patsubst %, hls-test-with-gcc/%, $(HLS_TEST_DYNAMATIC_FILES))
 
 
 HLS_TEST_BENCHMARK_FILES = \
@@ -195,12 +196,13 @@ HLS_TEST_BENCHMARK_FILES = \
 	# Histogram fails when included in the GitHub CI
 	# Seems like Verilator runs out of resources
 #	benchmarks/Inter-block/histogram \
-	benchmarks/PNAnalyser/chaosNCG \
-	benchmarks/Inter-block/los \
-	benchmarks/DSS/bnn \
+#	benchmarks/PNAnalyser/chaosNCG \
+#	benchmarks/Inter-block/los \
+#	benchmarks/DSS/bnn \
 
 .PHONY: hls-test-benchmark
-hls-test-benchmark: $(patsubst %, hls-test-run/%.hls, $(HLS_TEST_BENCHMARK_FILES))
+hls-test-benchmark: $(patsubst %, hls-test/%, $(HLS_TEST_BENCHMARK_FILES))
+
 
 .PHONY: hls-test-clean
 hls-test-clean:

@@ -20,7 +20,7 @@ HLS_TEST_ROOT ?= $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 include Makefile.sub
 
 .PHONY: run
-run: hls-test-run
+run: hls-test-all
 
 .PHONY: run-base
 run-base: hls-test-base
@@ -28,7 +28,7 @@ run-base: hls-test-base
 .PHONY: run-dynamaitc
 run-dynamiatic: hls-test-dynamatic
 
-.PHONY: run-
+.PHONY: run-polybench
 run-polybench: hls-test-polybench
 
 .PHONY: clean

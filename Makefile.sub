@@ -64,6 +64,7 @@ cycle-compare/%: $(HLS_TEST_BUILD)/%.hls.log $(HLS_TEST_SRC)/%.cycles
 	    "The execution time of $* has changed" \
 	    "Golden cycle time: $$(cat $(HLS_TEST_SRC)/$*.cycles)" \
 	    "Simulated cycles: $${CYCLES}" ; \
+	    # FIXME: Change to 'exit 1' once jlm becomes deterministic; \
 	    exit 0 ; \
 	fi
 

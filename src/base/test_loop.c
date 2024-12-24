@@ -3,15 +3,14 @@
 #include <assert.h>
 
 int kernel(int a, int b) {
-	a = 1;
-	for (int i=0; i<5; i++) {
+	for (int i=0; i<b; i++) {
 		a++;
 	}
 	return a;
 }
 
 int main(int argc, char** argv) {
-	int result = kernel(1, 2);
+	int result = kernel(1, 5);
 	printf("Result: %i\n", result);
 
 	// Check if correct result

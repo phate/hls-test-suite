@@ -76,7 +76,8 @@ jobs:
     - name: "Get the contents of the cycle-diff.log if it exists"
       id: get-cycles-log
       if: ${{ hashFiles('build/cycle-diff.log') != '' }}
-      run: echo "cycles=$(cat build/cycle-diff.log)" >> $GITHUB_OUTPUT
+      run: |
+        echo "::set-output name=cycles::$(cat build/cycle-diff.log)"
       shell: bash
 
     - name: "Create comment if cycles differ"

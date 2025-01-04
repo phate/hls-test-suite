@@ -76,9 +76,8 @@ jobs:
     - name: "Get the contents of the cycle-diff.log if it exists"
       id: get-cycles-log
       if: ${{ hashFiles('build/cycle-diff.log') != '' }}
-      uses: satya-500/read-file-github-action@v1
-      with:
-          path: "build/cycle-diff.log"
+      run: echo "cycles=$(cat build/cycle-diff.log)" >> $GITHUB_OUTPUT
+      shell: bash
 
     - name: "Create comment if cycles differ"
       if: ${{ hashFiles('build/cycle-diff.log') != '' }}
@@ -90,5 +89,5 @@ jobs:
             issue_number: context.issue.number,
             owner: context.repo.owner,
             repo: context.repo.repo,
-            body: ${{ steps.get-cycles-log.outputs.contents }}
+            body: ${{ steps.get-cycles-log.outputs.cycles }}
           })

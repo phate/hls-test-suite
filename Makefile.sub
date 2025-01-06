@@ -60,10 +60,13 @@ cycle-compare/%: $(HLS_TEST_BUILD)/%.hls.log $(HLS_TEST_SRC)/%.cycles
 	GOLDEN=$$(cat $(HLS_TEST_SRC)/$*.cycles) ; \
 	\
 	if [ "$$CYCLES" != "$$GOLDEN" ] ; then \
-		printf '$(RED)%s$(NC)\n    $(GREEN)%s$(NC)\n    $(RED)%s$(NC)\n' \
+	    printf '$(RED)%s$(NC)\n    $(GREEN)%s$(NC)\n    $(RED)%s$(NC)\n' \
 	    "The execution time of $* has changed" \
 	    "Golden cycle time: $$(cat $(HLS_TEST_SRC)/$*.cycles)" \
 	    "Simulated cycles: $${CYCLES}" ; \
+	    echo "The execution time of $* has changed" >> $(HLS_TEST_BUILD)/cycle-diff.log ; \
+	    echo "  Golden cycle time: $$(cat $(HLS_TEST_SRC)/$*.cycles)" >> $(HLS_TEST_BUILD)/cycle-diff.log ; \
+	    echo "  Simulated cycles: $${CYCLES}" >> $(HLS_TEST_BUILD)/cycle-diff.log ; \
 	    # FIXME: Change to 'exit 1' once jlm becomes deterministic; \
 	    exit 0 ; \
 	fi

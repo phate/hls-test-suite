@@ -72,3 +72,18 @@ jobs:
     - name: "Run HLS test suite"
       run: make -j `nproc` -O run
       shell: bash
+
+    - name: "Create comment if cycles differ"
+      if: ${{ hashFiles('build/cycle-diff.log') != '' }}
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{secrets.GITHUB_TOKEN}}
+        script: |
+          const fs = require("fs");
+          const comment = fs.readFileSync("build/cycle-diff.log", { encoding: "utf8" });
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: "```\n" + comment + "```"
+          });

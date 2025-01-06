@@ -13,6 +13,22 @@ jobs:
     if: contains(github.event.pull_request.title, '[DisableCI]') == false
     steps:
     - uses: actions/checkout@v4
+
+    - name: "Create comment if cycles differ"
+      if: ${{ hashFiles('Makefile') != '' }}
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{secrets.GITHUB_TOKEN}}
+        script: |
+          const fs = require("fs");
+          const comment = fs.readFileSync("Makefile");
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
     - name: "Install packages"
       uses: ./.github/actions/InstallPackages
       with:
@@ -73,22 +89,17 @@ jobs:
       run: make -j `nproc` -O run
       shell: bash
 
-    - name: "Get the contents of the cycle-diff.log if it exists"
-      id: get-cycles-log
-      if: ${{ hashFiles('build/cycle-diff.log') != '' }}
-      run: |
-        echo "cycles=\"$(cat build/cycle-diff.log | sed -z 's/\n/ | /g' )\"" >> $GITHUB_OUTPUT
-      shell: bash
-
     - name: "Create comment if cycles differ"
       if: ${{ hashFiles('build/cycle-diff.log') != '' }}
       uses: actions/github-script@v7
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
         script: |
+          const fs = require("fs");
+          const comment = fs.readFileSync("build/cycle-diff.log");
           github.rest.issues.createComment({
             issue_number: context.issue.number,
             owner: context.repo.owner,
             repo: context.repo.repo,
-            body: ${{ steps.get-cycles-log.outputs.cycles }}
-          })
+            body: comment
+          });

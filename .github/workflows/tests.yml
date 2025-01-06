@@ -13,21 +13,6 @@ jobs:
     if: contains(github.event.pull_request.title, '[DisableCI]') == false
     steps:
     - uses: actions/checkout@v4
-
-    - name: "Create comment if cycles differ"
-      uses: actions/github-script@v7
-      with:
-        github-token: ${{secrets.GITHUB_TOKEN}}
-        script: |
-          const fs = require("fs");
-          const comment = fs.readFileSync("Makefile", { encoding: "utf8" });
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: "```\n" + comment + "```"
-          });
-
     - name: "Install packages"
       uses: ./.github/actions/InstallPackages
       with:

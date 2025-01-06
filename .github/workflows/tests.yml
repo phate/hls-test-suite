@@ -21,7 +21,7 @@ jobs:
         github-token: ${{secrets.GITHUB_TOKEN}}
         script: |
           const fs = require("fs");
-          const comment = fs.readFileSync("Makefile");
+          const comment = fs.readFileSync("Makefile", { encoding: "utf8" });
           github.rest.issues.createComment({
             issue_number: context.issue.number,
             owner: context.repo.owner,
@@ -96,7 +96,7 @@ jobs:
         github-token: ${{secrets.GITHUB_TOKEN}}
         script: |
           const fs = require("fs");
-          const comment = fs.readFileSync("build/cycle-diff.log");
+          const comment = fs.readFileSync("build/cycle-diff.log", { encoding: "utf8" });
           github.rest.issues.createComment({
             issue_number: context.issue.number,
             owner: context.repo.owner,

@@ -27,7 +27,6 @@ jobs:
             repo: context.repo.repo,
             body: "```\n" + comment + "```"
           });
-          process.exit(1);
 
     - name: "Install packages"
       uses: ./.github/actions/InstallPackages

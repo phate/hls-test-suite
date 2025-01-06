@@ -37,7 +37,7 @@ $(HLS_TEST_BUILD)/%.hls: $(HLS_TEST_SRC)/%.c
 	@mkdir -p $(@D)
 
 #   Creates the files %.hls.v, %.hls.harness.cpp and %.hls.o
-	@$(JHLS) $< $(HLS_TEST_ADDITIONAL_SRC) $(HLS_TEST_ADDITIONAL_FLAGS) --circt --hls-function=kernel -o $@ > /dev/null 2>&1
+	@$(JHLS) $< $(HLS_TEST_ADDITIONAL_SRC) $(HLS_TEST_ADDITIONAL_FLAGS) --circt --hls-function=kernel -o $@
 
 #   Use verilator to combine the files into a single executable %.hls
 	@+set -e ; \

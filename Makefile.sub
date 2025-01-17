@@ -28,6 +28,11 @@ RED=\033[0;31m
 GREEN=\033[0;32m
 BLUE=\033[1;34m
 
+# Set MacOS specific paths
+ifeq ($(shell uname -s),Darwin)
+	CFLAGS += -I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/
+endif
+
 # Generic build target turning test .c files into executable binaries using jhls and Verilator
 .PRECIOUS: $(HLS_TEST_BUILD)/%.hls
 $(HLS_TEST_BUILD)/%.hls: $(HLS_TEST_SRC)/%.c
@@ -37,7 +42,7 @@ $(HLS_TEST_BUILD)/%.hls: $(HLS_TEST_SRC)/%.c
 	@mkdir -p $(@D)
 
 #   Creates the files %.hls.v, %.hls.harness.cpp and %.hls.o
-	@$(JHLS) $< $(HLS_TEST_ADDITIONAL_SRC) $(HLS_TEST_ADDITIONAL_FLAGS) --circt --hls-function=kernel -o $@ > /dev/null 2>&1
+	@$(JHLS) $< $(CFLAGS) $(HLS_TEST_ADDITIONAL_SRC) $(HLS_TEST_ADDITIONAL_FLAGS) --circt --hls-function=kernel -o $@ > /dev/null 2>&1
 
 #   Use verilator to combine the files into a single executable %.hls
 	@+set -e ; \

@@ -125,6 +125,7 @@ HLS_TEST_BASE_FILES = \
 	base/test_cpu \
 	base/test_float \
 	base/test_float2 \
+	base/test_vector \
 
 .PHONY: hls-test-base
 hls-test-base: $(patsubst %, hls-test/%, $(HLS_TEST_BASE_FILES))

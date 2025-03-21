@@ -109,6 +109,7 @@ module vivado_fadd_blocking(	// git/chisel-template/src/main/scala/hls_float/hls
 );
 
   wire        _delay_i0_ready;	// git/chisel-template/src/main/scala/hls_float/hls_float.scala:386:27
+  wire        delay_i0_valid = s_axis_a_tvalid & s_axis_b_tvalid;	// git/chisel-template/src/main/scala/hls_float/hls_float.scala:387:43
   wire [2:0]  delay_i0_data_Aidentity_res =
     (&(s_axis_a_tdata[30:23]))
       ? ((|(s_axis_a_tdata[22:0])) ? 3'h0 : {2'h1, ~(s_axis_a_tdata[31])})
@@ -227,11 +228,12 @@ module vivado_fadd_blocking(	// git/chisel-template/src/main/scala/hls_float/hls
                                                                                                       : {4'hC,
                                                                                                          ~(_delay_i0_data_rev_man_T_39[14])})
     - 5'h2;	// git/chisel-template/src/main/scala/floatingpoint/FloatingPoint.scala:101:23, :102:17, :105:17, :175:32, :188:{47,75}, src/main/scala/chisel3/util/MuxImpl.scala:31:84, src/main/scala/chisel3/util/OneHot.scala:48:45
+  wire        _s_axis_b_tready_T = _delay_i0_ready & delay_i0_valid;	// git/chisel-template/src/main/scala/hls_float/hls_float.scala:386:27, :387:43, :389:43
   HandshakeSingleDelay delay (	// git/chisel-template/src/main/scala/hls_float/hls_float.scala:386:27
     .clock    (aclk),
     .reset    (~aresetn),	// git/chisel-template/src/main/scala/hls_float/hls_float.scala:385:29
     .i0_ready (_delay_i0_ready),
-    .i0_valid (s_axis_a_tvalid & s_axis_b_tvalid),	// git/chisel-template/src/main/scala/hls_float/hls_float.scala:387:43
+    .i0_valid (delay_i0_valid),	// git/chisel-template/src/main/scala/hls_float/hls_float.scala:387:43
     .i0_data
       ({_delay_i0_data_T_14
           | (_delay_i0_data_T_17
@@ -323,8 +325,8 @@ module vivado_fadd_blocking(	// git/chisel-template/src/main/scala/hls_float/hls
     .o0_valid (m_axis_result_tvalid),
     .o0_data  (m_axis_result_tdata)
   );	// git/chisel-template/src/main/scala/hls_float/hls_float.scala:386:27
-  assign s_axis_a_tready = _delay_i0_ready;	// git/chisel-template/src/main/scala/hls_float/hls_float.scala:371:7, :386:27
-  assign s_axis_b_tready = _delay_i0_ready;	// git/chisel-template/src/main/scala/hls_float/hls_float.scala:371:7, :386:27
+  assign s_axis_a_tready = _s_axis_b_tready_T;	// git/chisel-template/src/main/scala/hls_float/hls_float.scala:371:7, :389:43
+  assign s_axis_b_tready = _s_axis_b_tready_T;	// git/chisel-template/src/main/scala/hls_float/hls_float.scala:371:7, :389:43
 endmodule
 
 

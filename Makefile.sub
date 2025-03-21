@@ -49,7 +49,7 @@ $(HLS_TEST_BUILD)/%.hls: $(HLS_TEST_SRC)/%.c
 	VERILATOR_TMP_DIR=`mktemp -d` ; \
 	trap "rm -r $$VERILATOR_TMP_DIR" EXIT ; \
 	VERILATOR_ROOT=/usr/share/verilator ; \
-	verilator_bin $(VERILATOR_TRACE) --cc --build --exe -Wno-WIDTH -y $(HLS_TEST_ROOT)/verilog_ops -Mdir $$VERILATOR_TMP_DIR  -MAKEFLAGS CXX=g++ -CFLAGS -g --assert -CFLAGS " -fPIC" -o $@ $@.v $@.o $@.harness.cpp > /dev/null
+	verilator_bin $(VERILATOR_TRACE) --cc --build --exe -Wno-WIDTH -y $(HLS_TEST_ROOT)/verilog_ops -Mdir $$VERILATOR_TMP_DIR  -MAKEFLAGS CXX=g++ -CFLAGS -g --assert -CFLAGS " -fPIC" -o $@ $@.v $@.o $@.harness.cpp $(VERILATOR_EXTRA_FLAGS) > /dev/null
 
 # Execute the program, placing its output in %.hls.log
 .PRECIOUS: $(HLS_TEST_BUILD)/%.hls.log
@@ -108,7 +108,8 @@ hls-test-all: \
 	hls-test-base \
 	hls-test-benchmark \
 	hls-test-polybench \
-	hls-test-dynamatic
+	hls-test-dynamatic \
+	hls-test-decoupled
 
 
 HLS_TEST_BASE_FILES = \
@@ -129,6 +130,18 @@ HLS_TEST_BASE_FILES = \
 
 .PHONY: hls-test-base
 hls-test-base: $(patsubst %, hls-test/%, $(HLS_TEST_BASE_FILES))
+
+HLS_TEST_DECOUPLED_FILES = \
+	decoupled/spmv_simple \
+	decoupled/test_stream \
+	decoupled/test_sum_stream \
+	decoupled/spmv_stream \
+	decoupled/test_sum_decouple \
+	decoupled/spmv_decouple \
+
+.PHONY: hls-test-decoupled
+hls-test-decoupled: VERILATOR_EXTRA_FLAGS = $(HLS_TEST_SRC)/decoupled/c_sim/hls_stream.cpp $(HLS_TEST_SRC)/decoupled/c_sim/hls_decouple.cpp
+hls-test-decoupled: $(patsubst %, hls-test/%, $(HLS_TEST_DECOUPLED_FILES))
 
 HLS_TEST_POLYBENCH_FILES = \
 	polybench/correlation \

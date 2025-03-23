@@ -49,7 +49,7 @@ $(HLS_TEST_BUILD)/%.hls: $(HLS_TEST_SRC)/%.c
 	VERILATOR_TMP_DIR=`mktemp -d` ; \
 	trap "rm -r $$VERILATOR_TMP_DIR" EXIT ; \
 	VERILATOR_ROOT=/usr/share/verilator ; \
-	verilator_bin $(VERILATOR_TRACE) --cc --build --exe -Wno-WIDTH -y $(HLS_TEST_ROOT)/verilog_ops -Mdir $$VERILATOR_TMP_DIR  -MAKEFLAGS CXX=g++ -CFLAGS -g --assert -CFLAGS " -fPIC" -o $@ $@.v $@.o $@.harness.cpp $(VERILATOR_EXTRA_FLAGS) > /dev/null
+	verilator_bin $(VERILATOR_TRACE) --cc --build --exe -Wno-WIDTH -y $(HLS_TEST_ROOT)/verilog_ops -Mdir $$VERILATOR_TMP_DIR  -MAKEFLAGS CXX=g++ -CFLAGS -g --assert -CFLAGS " -fPIC" -o $@ $@.v $@.o $@.harness.cpp $(HLS_TEST_ROOT)/verilog_ops/float_dpi.cpp $(VERILATOR_EXTRA_FLAGS) > /dev/null
 
 # Execute the program, placing its output in %.hls.log
 .PRECIOUS: $(HLS_TEST_BUILD)/%.hls.log

@@ -13,14 +13,8 @@ enum decoupled_channels{
     sum_dec_channel
 };
 TYPE kernel(TYPE*  a, uint32_t cnt){
-    TYPE result = 0;
-    for (uint32_t j = 0; j < cnt; j++) {
-        hls_decouple_request_TYPE(sum_dec_channel, &a[j]);
-    }
-    for (uint32_t j = 0; j < cnt; j++) {
-        result += hls_decouple_response_TYPE(sum_dec_channel, LATENCY);
-    }
-	return result;
+    hls_decouple_request_TYPE(sum_dec_channel, &a[cnt-1]);
+	return hls_decouple_response_TYPE(sum_dec_channel, LATENCY);;
 }
 
 int main(int argc, char** argv){
@@ -29,7 +23,7 @@ int main(int argc, char** argv){
     TYPE ref_result = 0;
     for (uint32_t i = 0; i < cnt; ++i) {
         vec[i] = i;
-        ref_result += i;
+        ref_result = i;
     }
     TYPE result = kernel(vec, cnt);
     assert(result == ref_result);

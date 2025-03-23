@@ -5,7 +5,7 @@
 #include <string.h>
 
 #define TYPE float
-#define LATENCY 10
+#define LATENCY 100
 
 extern void hls_decouple_request_32(uint32_t channel, const uint32_t * addr);
 extern uint32_t hls_decouple_response_32(uint32_t channel, uint32_t buffer_slots);

@@ -144,6 +144,9 @@ HLS_TEST_DECOUPLED_FILES = \
 	decoupled/spmv_decouple \
 	decoupled/multi_spmv_simple \
 	decoupled/multi_spmv_decouple \
+	decoupled/hashtable_decouple \
+	decoupled/hashtable_stream \
+	decoupled/hashtable_simple \
 
 # directly returning a decouple result is not supported at the moment due to lacking smap support of ReplaceDecouple in mem-conv
 #	decoupled/test_decouple_no_loop \

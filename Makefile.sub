@@ -147,9 +147,13 @@ HLS_TEST_DECOUPLED_FILES = \
 	decoupled/hashtable_simple \
 	decoupled/hashtable_stream \
 	decoupled/hashtable_decouple \
+	decoupled/hashtable_decouple2 \
 	decoupled/binsearch_simple \
+	decoupled/binsearch_simple_for \
+	decoupled/binsearch_simple_early \
 	decoupled/binsearch_stream \
 	decoupled/binsearch_decouple \
+	decoupled/binsearch_decouple_rif \
 
 # directly returning a decouple result is not supported at the moment due to lacking smap support of ReplaceDecouple in mem-conv
 #	decoupled/test_decouple_no_loop \

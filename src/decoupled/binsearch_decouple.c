@@ -43,22 +43,21 @@ void kernel(
         hls_decouple_request_32(table_channel, &table[i]);
     }
     for (uint32_t i = 0; i < table_elements; i += CHUNK_SIZE) {
-        int iterations = 0;
-        for (size_t j = 1; sorted_elements >= (j>>EXTRA_ITERATIONS); j = j << 1) {
+        for (uint32_t j = 1; sorted_elements >= (j>>EXTRA_ITERATIONS); j = j << 1) {
             bool first_iteration = j == 1;
             bool last_iteration = (j>>EXTRA_ITERATIONS) << 1 > sorted_elements;
-            for (size_t k = 0; k < CHUNK_SIZE; ++k) {
+            for (uint32_t k = 0; k < CHUNK_SIZE; ++k) {
                 uint32_t l, r, m;
                 TYPE element;
                 if (first_iteration) {
-                    element = hls_decouple_response_32(table_channel, LATENCY);
+                    element = hls_decouple_response_32(table_channel, CHUNK_SIZE);
                     l = 0;
                     r = sorted_elements - 1;
                 } else {
-                    element = hls_stream_deq_uint32t(element_stream, LATENCY);
-                    l = hls_stream_deq_uint32t(l_stream, LATENCY);
-                    r = hls_stream_deq_uint32t(r_stream, LATENCY);
-                    TYPE tmp = hls_decouple_response_32(sorted_channel, LATENCY);
+                    element = hls_stream_deq_uint32t(element_stream, CHUNK_SIZE);
+                    l = hls_stream_deq_uint32t(l_stream, CHUNK_SIZE);
+                    r = hls_stream_deq_uint32t(r_stream, CHUNK_SIZE);
+                    TYPE tmp = hls_decouple_response_32(sorted_channel, CHUNK_SIZE);
                     m = (r + l) >> 1;
                     if (tmp > element) {
                         r = m;
@@ -80,17 +79,16 @@ void kernel(
                     hls_stream_enq_uint32t(r_stream, r);
                     hls_decouple_request_32(sorted_channel, &sorted[m]);
                 }
-                iterations++;
             }
         }
     }
     for (uint32_t i = 0; i < table_elements; i++) {
         int32_t res = -1;
-        TYPE tmp_l = hls_decouple_response_32(l_sorted_channel, LATENCY);
-        TYPE tmp_r = hls_decouple_response_32(r_sorted_channel, LATENCY);
-        uint32_t l = hls_stream_deq_uint32t(l_stream2, LATENCY);
-        uint32_t r = hls_stream_deq_uint32t(r_stream2, LATENCY);
-        TYPE element = hls_stream_deq_uint32t(element_stream2, LATENCY);
+        TYPE tmp_l = hls_decouple_response_32(l_sorted_channel, CHUNK_SIZE);
+        TYPE tmp_r = hls_decouple_response_32(r_sorted_channel, CHUNK_SIZE);
+        uint32_t l = hls_stream_deq_uint32t(l_stream2, CHUNK_SIZE);
+        uint32_t r = hls_stream_deq_uint32t(r_stream2, CHUNK_SIZE);
+        TYPE element = hls_stream_deq_uint32t(element_stream2, CHUNK_SIZE);
         if (tmp_r == element) {
             res = r;
         } else if (tmp_l == element) {

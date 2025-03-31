@@ -19,26 +19,19 @@ void kernel(
         TYPE element = table[i];
         uint32_t l = 0, r = sorted_elements - 1;
         int32_t res = -1;
-        while (r - l > 1) {
+        do {
             uint32_t m = (r + l) >> 1;
             TYPE tmp = sorted[m];
-            if (tmp > element) {
-                r = m;
-            } else {
-                l = m;
-            }
             if(tmp == element){
                 res = m;
                 break;
             }
-        }
-        if (res == -1) {
-            if (sorted[r] == element) {
-                res = r;
-            } else if (sorted[l] == element) {
-                res = l;
+            if (tmp > element) {
+                r = m-1;
+            } else {
+                l = m+1;
             }
-        }
+        } while (l<=r);
         result[i] = res;
     }
 }

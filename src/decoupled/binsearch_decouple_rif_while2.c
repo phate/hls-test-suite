@@ -8,7 +8,7 @@
 
 #define TYPE uint32_t
 
-#define LATENCY 100
+#define LATENCY 128
 #define OUTSTANDING_READS LATENCY
 
 extern void hls_decouple_request_32(uint32_t channel, uint32_t *addr);
@@ -30,7 +30,7 @@ enum decoupled_channels {
     l_stream2,
     r_sorted_channel,
     l_sorted_channel,
-    iteration_stream
+    index_stream,
 };
 
 #define EXTRA_ITERATIONS 1
@@ -49,38 +49,34 @@ void kernel(
     uint32_t rif = 0; // requests in flight
     uint32_t table_i = 0;
     for (uint32_t i = 0; i < table_elements;) {
-        uint32_t l, r, m;
-        uint32_t iteration;
+        uint32_t l, r, m, index;
         TYPE element;
         if (rif < OUTSTANDING_READS && table_i < table_elements) {
             element = hls_decouple_response_32(table_channel, OUTSTANDING_READS);
-            table_i++;
+            index = table_i++;
             l = 0;
             r = sorted_elements - 1;
-            iteration = 1;
         } else {
             element = hls_stream_deq_uint32t(element_stream, OUTSTANDING_READS);
             l = hls_stream_deq_uint32t(l_stream, OUTSTANDING_READS);
             r = hls_stream_deq_uint32t(r_stream, OUTSTANDING_READS);
-            iteration = hls_stream_deq_uint32t(iteration_stream, OUTSTANDING_READS);
+            index = hls_stream_deq_uint32t(index_stream, OUTSTANDING_READS);
             TYPE tmp = hls_decouple_response_32(sorted_channel, OUTSTANDING_READS);
             rif--;
             m = (r + l) >> 1;
             if (tmp > element) {
-                r = m;
+                r = m-1;
             } else {
-                l = m;
+                l = m+1;
             }
-            // increase after we actually performed iteration
-            iteration = iteration << 1;
-            // !(r - l > 1) leads to out of order results, since this can happen earlier, so we need iteration
-            if (iteration>sorted_elements) {
-                hls_stream_enq_uint32t(element_stream2, element);
-                hls_stream_enq_uint32t(l_stream2, l);
-                hls_stream_enq_uint32t(r_stream2, r);
-                // TODO: we could probably eliminate one of the requests here, because we already loaded sorted[m]
-                hls_decouple_request_32(r_sorted_channel, &sorted[r]);
-                hls_decouple_request_32(l_sorted_channel, &sorted[l]);
+            if(tmp == element){
+                result[index] = m;
+                i++;
+                continue;
+            }
+            if (!(l<=r)) {
+                // not found
+                result[index] = -1;
                 i++;
                 continue;
             }
@@ -89,23 +85,9 @@ void kernel(
         hls_stream_enq_uint32t(element_stream, element);
         hls_stream_enq_uint32t(l_stream, l);
         hls_stream_enq_uint32t(r_stream, r);
-        hls_stream_enq_uint32t(iteration_stream, iteration);
+        hls_stream_enq_uint32t(index_stream, index);
         hls_decouple_request_32(sorted_channel, &sorted[m]);
         rif++;
-    }
-    for (uint32_t i = 0; i < table_elements; i++) {
-        int32_t res = -1;
-        TYPE tmp_l = hls_decouple_response_32(l_sorted_channel, OUTSTANDING_READS);
-        TYPE tmp_r = hls_decouple_response_32(r_sorted_channel, OUTSTANDING_READS);
-        uint32_t l = hls_stream_deq_uint32t(l_stream2, OUTSTANDING_READS);
-        uint32_t r = hls_stream_deq_uint32t(r_stream2, OUTSTANDING_READS);
-        TYPE element = hls_stream_deq_uint32t(element_stream2, OUTSTANDING_READS);
-        if (tmp_r == element) {
-            res = r;
-        } else if (tmp_l == element) {
-            res = l;
-        }
-        result[i] = res;
     }
 }
 

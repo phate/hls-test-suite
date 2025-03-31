@@ -142,6 +142,7 @@ HLS_TEST_DECOUPLED_FILES = \
 	decoupled/spmv_simple \
 	decoupled/spmv_stream \
 	decoupled/spmv_decouple \
+	decoupled/spmv_decouple_naive \
 	decoupled/multi_spmv_simple \
 	decoupled/multi_spmv_decouple \
 	decoupled/hashtable_simple \
@@ -151,9 +152,12 @@ HLS_TEST_DECOUPLED_FILES = \
 	decoupled/binsearch_simple \
 	decoupled/binsearch_simple_for \
 	decoupled/binsearch_simple_early \
+	decoupled/binsearch_simple_early2 \
 	decoupled/binsearch_stream \
 	decoupled/binsearch_decouple \
-	decoupled/binsearch_decouple_rif \
+	decoupled/binsearch_decouple_rif_for \
+	decoupled/binsearch_decouple_rif_while \
+	decoupled/binsearch_decouple_rif_while2 \
 
 # directly returning a decouple result is not supported at the moment due to lacking smap support of ReplaceDecouple in mem-conv
 #	decoupled/test_decouple_no_loop \

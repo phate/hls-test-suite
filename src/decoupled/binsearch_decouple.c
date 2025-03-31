@@ -8,7 +8,8 @@
 
 #define TYPE uint32_t
 
-#define LATENCY 100
+//#define LATENCY 128
+#define LATENCY 128
 #define CHUNK_SIZE LATENCY
 
 extern void hls_decouple_request_32(uint32_t channel, uint32_t *addr);
@@ -31,6 +32,7 @@ enum decoupled_channels {
 };
 
 #define EXTRA_ITERATIONS 1
+#define MIN(a, b) (((a)<(b))?(a):(b))
 void kernel(
         const TYPE *table,
         const TYPE *sorted,
@@ -43,10 +45,12 @@ void kernel(
         hls_decouple_request_32(table_channel, &table[i]);
     }
     for (uint32_t i = 0; i < table_elements; i += CHUNK_SIZE) {
+        uint32_t elements_left = table_elements - i;
+        uint32_t chunk = MIN(CHUNK_SIZE, elements_left);
         for (uint32_t j = 1; sorted_elements >= (j>>EXTRA_ITERATIONS); j = j << 1) {
             bool first_iteration = j == 1;
             bool last_iteration = (j>>EXTRA_ITERATIONS) << 1 > sorted_elements;
-            for (uint32_t k = 0; k < CHUNK_SIZE; ++k) {
+            for (uint32_t k = 0; k < chunk; ++k) {
                 uint32_t l, r, m;
                 TYPE element;
                 if (first_iteration) {

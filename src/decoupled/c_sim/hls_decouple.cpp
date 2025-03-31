@@ -4,6 +4,7 @@
 #include <queue>
 #include <cstdint>
 #include <cmath>
+#include <cassert>
 
 #define TYPE float
 typedef uint32_t t32v4 __attribute__((vector_size(16)));
@@ -27,6 +28,7 @@ extern "C" {
 #endif
     }
     uint32_t hls_decouple_response_32(uint32_t channel, uint32_t buffer_slots){
+        assert(!hls_decouple_queues_uint32_t[channel].empty());
         uint32_t data = hls_decouple_queues_uint32_t[channel].front();
         hls_decouple_queues_uint32_t[channel].pop();
         return data;
@@ -40,6 +42,7 @@ extern "C" {
 #endif
     }
     TYPE hls_decouple_response_TYPE(uint32_t channel, uint32_t buffer_slots){
+        assert(!hls_decouple_queues_TYPE[channel].empty());
         TYPE data = hls_decouple_queues_TYPE[channel].front();
         hls_decouple_queues_TYPE[channel].pop();
         return data;
@@ -52,6 +55,7 @@ extern "C" {
 #endif
     }
     t32v4 hls_decouple_response_t32v4(uint32_t channel, uint32_t buffer_slots){
+        assert(!hls_decouple_queues_t32v4[channel].empty());
         t32v4 data = hls_decouple_queues_t32v4[channel].front();
         hls_decouple_queues_t32v4[channel].pop();
         return data;

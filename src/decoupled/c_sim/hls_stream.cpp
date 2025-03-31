@@ -3,6 +3,7 @@
 //
 #include <queue>
 #include <cstdint>
+#include <cassert>
 
 #define TYPE float
 typedef uint32_t t32v4 __attribute__((vector_size(16)));
@@ -17,6 +18,7 @@ extern "C" {
         queues_uint32_t[channel].push(data);
     }
     uint32_t hls_stream_deq_uint32t(uint32_t channel, uint32_t buffer_slots){
+        assert(!queues_uint32_t[channel].empty());
         uint32_t data = queues_uint32_t[channel].front();
         queues_uint32_t[channel].pop();
         return data;
@@ -25,6 +27,7 @@ extern "C" {
         queues_TYPE[channel].push(data);
     }
     TYPE hls_stream_deq_TYPE(uint32_t channel, uint32_t buffer_slots){
+        assert(!queues_TYPE[channel].empty());
         TYPE data = queues_TYPE[channel].front();
         queues_TYPE[channel].pop();
         return data;
@@ -33,6 +36,7 @@ extern "C" {
         queues_t32v4[channel].push(data);
     }
     t32v4 hls_stream_deq_t32v4(uint32_t channel, uint32_t buffer_slots){
+        assert(!queues_t32v4[channel].empty());
         t32v4 data = queues_t32v4[channel].front();
         queues_t32v4[channel].pop();
         return data;

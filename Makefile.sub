@@ -135,9 +135,13 @@ hls-test-base: $(patsubst %, hls-test/%, $(HLS_TEST_BASE_FILES))
 
 HLS_TEST_DECOUPLED_FILES = \
 	decoupled/test_stream \
+	decoupled/test_sum \
+	decoupled/test_sum_int \
 	decoupled/test_sum_stream \
 	decoupled/test_sum_decouple \
 	decoupled/test_sum_decouple2 \
+	decoupled/test_indirection \
+	decoupled/test_indirection_decouple \
 	decoupled/test_multi_sum_decouple \
 	decoupled/spmv_simple \
 	decoupled/spmv_stream \
@@ -154,10 +158,13 @@ HLS_TEST_DECOUPLED_FILES = \
 	decoupled/binsearch_simple_early \
 	decoupled/binsearch_simple_early2 \
 	decoupled/binsearch_stream \
+	decoupled/binsearch_stream_rif_while2 \
 	decoupled/binsearch_decouple \
 	decoupled/binsearch_decouple_rif_for \
 	decoupled/binsearch_decouple_rif_while \
 	decoupled/binsearch_decouple_rif_while2 \
+	decoupled/binsearch_decouple_rif_while3 \
+	decoupled/binsearch_decouple_rif_while4 \
 
 # directly returning a decouple result is not supported at the moment due to lacking smap support of ReplaceDecouple in mem-conv
 #	decoupled/test_decouple_no_loop \

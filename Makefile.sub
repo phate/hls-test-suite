@@ -141,6 +141,7 @@ HLS_TEST_DECOUPLED_FILES = \
 	decoupled/test_sum_decouple \
 	decoupled/test_sum_decouple2 \
 	decoupled/test_indirection \
+	decoupled/test_indirection_stream \
 	decoupled/test_indirection_decouple \
 	decoupled/test_multi_sum_decouple \
 	decoupled/spmv_simple \

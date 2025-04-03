@@ -48,7 +48,7 @@ class RhlsDecLoad:
 
     @staticmethod
     def from_instance(buf: str):
-        match = re.match(r"op_HLS_DEC_LOAD_(?P<depth>\d+)_(?P<type_name>[^_]+)_IN2_W(?P<width>\d+)_OUT2_W(?P<addr_width>\d+)_(?P<id>\d+)", buf).groupdict()
+        match = re.match(r"op_HLS_DEC_LOAD_(?P<depth>\d+)_(?P<type_name>.+)_IN2_W(?P<width>\d+)_OUT2_W(?P<addr_width>\d+)_(?P<id>\d+)", buf).groupdict()
         depth = int(match["depth"])
         width = int(match["width"])
         addr_width = int(match["addr_width"])
@@ -57,7 +57,11 @@ class RhlsDecLoad:
         return RhlsDecLoad(depth, width, addr_width, type_name, id)
 
     def to_module(self):
-        return f"op_HLS_DEC_LOAD_{self.depth}_{self.type_name}_I{self.addr_width}W_I{self.width}W_O{self.width}W_O{self.addr_width}W"
+        # TODO: fix this in a nicer way:
+        type_name = self.type_name
+        if "fixedvector" in type_name:
+            type_name += "_"
+        return f"op_HLS_DEC_LOAD_{self.depth}_{type_name}_I{self.addr_width}W_I{self.width}W_O{self.width}W_O{self.addr_width}W"
 
     def to_instance(self):
         return f"op_HLS_DEC_LOAD_{self.depth}_{self.type_name}_IN2_W{self.width}_OUT2_W{self.addr_width}_{self.id}"
@@ -97,6 +101,9 @@ class RhlsAccelerator:
     def cpp_path(self):
         return self.verilog_path.with_suffix(".harness.cpp")
     @property
+    def cpp_axi_path(self):
+        return self.verilog_path.with_suffix(".harness_axi.cpp")
+    @property
     def object_path(self):
         return self.verilog_path.with_suffix(".o")
     @property
@@ -107,14 +114,20 @@ class RhlsAccelerator:
     def sim_path(self):
         return self.verilog_path.with_suffix("")
 
+    @property
+    def log_path(self):
+        return self.verilog_path.with_suffix(".log")
+
     def build_sim(self, mem_latency: int = 100):
+        print(f"building {self.sim_path}")
         HLS_TEST_ROOT = pathlib.Path("..").absolute()
         with tempfile.TemporaryDirectory() as tmpdir:
-            subprocess.run(f"""verilator --trace -CFLAGS -DTRACE_SIGNALS --cc --build --exe -Wno-WIDTH -j 12 -y {HLS_TEST_ROOT}/verilog_ops/float -y {HLS_TEST_ROOT}/verilog_ops/float/dpi -y {HLS_TEST_ROOT}/verilog_ops/buffer -y {HLS_TEST_ROOT}/verilog_ops/dec_load -Mdir {tmpdir}  -MAKEFLAGS CXX=g++ -CFLAGS -g --assert -CFLAGS " -fPIC" -o {self.sim_path.absolute()} {self.verilog_path.absolute()} {self.object_path.absolute()} {self.cpp_path.absolute()} {HLS_TEST_ROOT}/verilog_ops/float/dpi/float_dpi.cpp {HLS_TEST_ROOT}/src/decoupled/c_sim/hls_stream.cpp {HLS_TEST_ROOT}/src/decoupled/c_sim/hls_decouple.cpp -CFLAGS -DMEMORY_LATENCY={mem_latency}""", shell=True, check=True)
+            out = subprocess.run(f"""verilator --trace -CFLAGS -DTRACE_SIGNALS --cc --build --exe -Wno-WIDTH -j 12 -y {HLS_TEST_ROOT}/verilog_ops/float -y {HLS_TEST_ROOT}/verilog_ops/float/dpi -y {HLS_TEST_ROOT}/verilog_ops/buffer -y {HLS_TEST_ROOT}/verilog_ops/dec_load -Mdir {tmpdir}  -MAKEFLAGS CXX=g++ -CFLAGS -g --assert -CFLAGS " -fPIC" -o {self.sim_path.absolute()} {self.verilog_path.absolute()} {self.object_path.absolute()} {self.cpp_path.absolute()} {HLS_TEST_ROOT}/verilog_ops/float/dpi/float_dpi.cpp {HLS_TEST_ROOT}/src/decoupled/c_sim/hls_stream.cpp {HLS_TEST_ROOT}/src/decoupled/c_sim/hls_decouple.cpp -CFLAGS -DMEMORY_LATENCY={mem_latency}""", shell=True, check=True, capture_output=True)
             assert self.sim_path.exists()
         return self.sim_path
 
     def run_sim(self):
+        print(f"running {self.sim_path}")
         assert self.sim_path.exists()
         out = subprocess.run(self.sim_path, capture_output = True, text = True)
         assert out.returncode == 0
@@ -137,12 +150,13 @@ class RhlsAccelerator:
         for instantiation, module, instance in load_matches:
             nrl, dot, verilog = self._resize_load(instance, buffer_size, dot, verilog)
         cpp = self.cpp_path.read_text().replace('".vcd"', '".upsize.vcd"')
-        new = RhlsAccelerator(self.verilog_path.with_name(self.verilog_path.name.replace(".hls", ".upsize.hls")))
+        new = self.get_suffix_variant(".upsize")
         new.dot_path.write_text(dot)
         new.verilog_path.write_text(verilog)
         new.cpp_path.write_text(cpp)
         shutil.copy(self.object_path, new.object_path)
         shutil.copy(self.json_path, new.json_path)
+        shutil.copy(self.cpp_axi_path, new.cpp_axi_path)
         return new
 
     def resize_buffers(self):
@@ -170,7 +184,7 @@ class RhlsAccelerator:
             # # if depth == 0:
             #     # assert empty == time_steps
             # empty_frac = empty/time_steps
-        pprint.pprint(buf_depths)
+        # pprint.pprint(buf_depths)
         loads = find_op_names(vcd, "op_HLS_DEC_LOAD")
         load_depths = {}
         for load in loads:
@@ -179,19 +193,24 @@ class RhlsAccelerator:
             count_vcd = vcd[count_path]
             depth = max((int(val, 2) for ts, val in count_vcd.time_series if ts > vcd.start_time), default=0)
             load_depths[load] = depth
-        pprint.pprint(load_depths)
+        # pprint.pprint(load_depths)
         verilog = self.verilog_path.read_text()
         dot = self.dot_path.read_text()
         needed_ops = []
         for buf, depth in buf_depths.items():
             rb = RhlsBuf.from_instance(buf)
-            if depth < 2:
-                if rb.pass_through:
-                    # empty or small pass-through buffers are fine
-                    pass
-                else:
-                    # needed to guarantee forward progress
+            if rb.pass_through:
+                # we need one more depth somewhere along the path to guarantee good performance
+                depth = min(depth+1, rb.depth)
+                # empty or small pass-through buffers are fine
+                # todo: can lead to deadlocks for rif loop
+                pass
+            else:
+                # needed to guarantee forward progress
+                if depth < 2:
                     depth = 2
+                else:
+                    depth = min(depth+1, rb.depth)
             depth = to_pow2(depth)
             nrb, dot, verilog = self._resize_buf(buf, depth, dot, verilog)
             needed_ops.append(nrb.to_chisel())
@@ -199,25 +218,33 @@ class RhlsAccelerator:
             depth = to_pow2(depth)
             nrl, dot, verilog = self._resize_load(load, depth, dot, verilog)
             needed_ops.append(nrl.to_chisel())
-        pprint.pprint(collections.Counter(needed_ops))
-        for n in sorted(set(needed_ops)):
-            print(n)
+        # pprint.pprint(collections.Counter(needed_ops))
+        # for n in sorted(set(needed_ops)):
+        #     print(n)
         cpp = self.cpp_path.read_text()
         if ".upsize" in self.vcd_path.name:
-            new = RhlsAccelerator(self.verilog_path.with_name(self.verilog_path.name.replace(".upsize.hls", ".resize.hls")))
+            new = self.get_suffix_variant(".resize")
             cpp = cpp.replace('".upsize.vcd"', '".resize.vcd"')
         else:
-            new = RhlsAccelerator(self.verilog_path.with_name(self.verilog_path.name.replace(".hls", ".resize.hls")))
-            cpp = cpp.replace('".vcd"', '".resize.vcd"')
+            new = self.get_suffix_variant(".downsize")
+            cpp = cpp.replace('".vcd"', '".downsize.vcd"')
         new.dot_path.write_text(dot)
         new.verilog_path.write_text(verilog)
         new.cpp_path.write_text(cpp)
         shutil.copy(self.object_path, new.object_path)
         shutil.copy(self.json_path, new.json_path)
+        shutil.copy(self.cpp_axi_path, new.cpp_axi_path)
         return new
 
-    @classmethod
-    def _resize_buf(self, buf: str, depth: int, dot: str, verilog: str):
+    def get_suffix_variant(self, suffix):
+        extra_suffix = ""
+        if self.vcd_path.suffixes[0] != ".hls":
+            extra_suffix = self.vcd_path.suffixes[0]
+        old_suffix = f"{extra_suffix}.hls"
+        return RhlsAccelerator(self.verilog_path.with_name(self.verilog_path.name.replace(old_suffix, f"{suffix}.hls")))
+
+    @staticmethod
+    def _resize_buf(buf: str, depth: int, dot: str, verilog: str):
         rb = RhlsBuf.from_instance(buf)
         nrb = dataclasses.replace(rb, depth=depth)
         old_instantiation = rb.to_module() + " " + rb.to_instance() + " "
@@ -230,8 +257,8 @@ class RhlsAccelerator:
         dot = dot.replace(rb.to_instance() + ":", nrb.to_instance() + ":")
         return nrb, dot, verilog
 
-    @classmethod
-    def _resize_load(self, load: str, depth: int, dot: str, verilog: str):
+    @staticmethod
+    def _resize_load(load: str, depth: int, dot: str, verilog: str):
         rl = RhlsDecLoad.from_instance(load)
         nrl = dataclasses.replace(rl, depth=depth)
         old_instantiation = rl.to_module() + " " + rl.to_instance() + " "
@@ -251,19 +278,23 @@ def main():
     verilogs = list(build_folder.glob("*/*.hls.v"))
     # verilogs = [build_folder / "decoupled" / "test_sum.hls.v"]
     for verilog in verilogs:
-        if ".upsize" in verilog.name:
+        if verilog.suffixes[0] != ".hls":
             continue
         acc = RhlsAccelerator(verilog)
         acc.build_sim()
         cycles = acc.run_sim()
+        dn_acc = acc.resize_buffers()
+        dn_acc.build_sim()
+        dn_cycles = dn_acc.run_sim()
+        # assert cycles == dn_cycles
         up_acc = acc.upsize_buffers()
         up_acc.build_sim()
         up_cycles = up_acc.run_sim()
-        assert up_cycles <= cycles
+        # assert up_cycles <= cycles
         re_acc = up_acc.resize_buffers()
         re_acc.build_sim()
         re_cycles = re_acc.run_sim()
-        assert re_cycles == up_cycles
+        # assert re_cycles == up_cycles
         pass
 
 

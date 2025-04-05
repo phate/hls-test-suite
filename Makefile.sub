@@ -119,6 +119,9 @@ HLS_TEST_BASE_FILES = \
 	base/test_nested_loops \
 	base/test_conditional \
 	base/test_load \
+	base/test_store_loop \
+	base/test_store_loop_cond \
+	base/test_store_loop_cond2 \
 	base/test_array \
 	base/test_gep \
 	base/test_global \

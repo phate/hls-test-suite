@@ -68,20 +68,20 @@ class PortValue:
     data: int
 
 
-def find_sr_path(hier):
+def find_name_path(search_name: str, hier):
     for name, h in hier.items():
-        if name == "sr":
+        if name == search_name:
             return (name,)
-        if path := find_sr_path(h):
+        if path := find_name_path(search_name, h):
             return (name,) + path
 
 
 class Node:
     def __getitem__(self, item: str):
-        return self.vcd[self.sr_path + (self.name, item)]
+        return self.vcd[self.node_path + (item,)]
 
     def __contains__(self, item):
-        return self.sr_path + (self.name, item) in self.vcd.net_dict
+        return self.node_path + (item,) in self.vcd.net_dict
 
     def _port(self, port, ts):
         if self[f"{port}_ready"][ts] and self[f"{port}_valid"][ts]:
@@ -90,9 +90,8 @@ class Node:
 
     def _get_ports(self, direction: str):
         hier = self.vcd.net_hier
-        for n in self.sr_path:
+        for n in self.node_path:
             hier = hier[n]
-        hier = hier[self.name]
         result = []
         for i in range(200):
             if f"{direction}{i}_ready" in hier:
@@ -102,7 +101,7 @@ class Node:
     def __init__(self, vcd: vcdlib.Vcd, name: str):
         self.vcd = vcd
         self.name = name
-        self.sr_path = find_sr_path(vcd.net_hier)
+        self.node_path = find_name_path(name, vcd.net_hier)
         ins = self._get_ports("i")
         outs = self._get_ports("o")
         self.i = []
@@ -168,7 +167,7 @@ def match_node_io(a: typing.List[typing.List[PortValue]], b: typing.List[typing.
 
 
 def get_inputs(vcd: vcdlib.Vcd):
-    kernel_path = find_sr_path(vcd.net_hier)[:-1]
+    kernel_path = find_name_path("sr", vcd.net_hier)[:-1]
     hier = vcd.net_hier
     for n in kernel_path:
         hier = hier[n]
@@ -183,17 +182,13 @@ def get_inputs(vcd: vcdlib.Vcd):
         if ready[ts] and valid[ts]:
             return [a[ts] for a in args]
 
-
-def find_op_names(vcd: vcdlib.Vcd, name_contains: str):
-    sr_path = find_sr_path(vcd.net_hier)
-    hier = vcd.net_hier
-    for n in sr_path:
-        hier = hier[n]
-    result = []
-    for name in hier:
+def find_op_names(hier, name_contains: str):
+    res = []
+    for name, h in hier.items():
         if name_contains in name and "ready" not in name and "valid" not in name and "data" not in name:
-            result.append(name)
-    return result
+            res.append(name)
+        res.extend(find_op_names(h, name_contains))
+    return res
 
 
 def find_stream_issue():
@@ -244,22 +239,19 @@ def find_stream_issue():
 
 
 def find_earliest_divergence():
-    vcd_1 = vcdlib.Vcd("cmake-build-debug/Vjlm_hls_128.vcd")
-    vcd_2 = vcdlib.Vcd("cmake-build-debug/Vjlm_hls.vcd")
+    vcd_1 = vcdlib.Vcd("../build/decoupled/binsearch_decouple_rif_while.upsize.hls.vcd")
+    vcd_2 = vcdlib.Vcd("../scripts/Vbinsearch_decouple_rif_while.resize.vcd")
 
-    sr_path = find_sr_path(vcd_1.net_hier)
-    hier = vcd_1.net_hier
-    for p in sr_path:
-        hier = hier[p]
-    nodes = []
-    for node, h in hier.items():
-        if h and node.startswith("op_") and "ready" not in node and "valid" not in node and "data" not in node:
-            nodes.append(node)
+    nodes_1 = find_op_names(vcd_1.net_hier, "op_")
+    nodes_2 = find_op_names(vcd_2.net_hier, "op_")
+    common_nodes = sorted(set(nodes_1).intersection(nodes_2))
+    print(common_nodes)
     divergences = []
-    for name in nodes:
+    for name in common_nodes:
         if divergence := find_divergence(name, vcd_1, vcd_2):
             divergences.append(divergence)
     divergences = sorted(divergences)
+    pprint.pprint(divergences)
     pass
 
 
@@ -276,6 +268,11 @@ def find_divergence(name, vcd_1, vcd_2):
                 divergence = ii1.ts, ii2.ts, f"{name}.i{ix}", ii1.data, ii2.data
                 found = True
                 break
+        if len(i1) > len(i2):
+            first_missing = i1[len(i2)]
+            if first_missing.ts < divergence[0]:
+                found = True
+                divergence = first_missing.ts, -1, f"{name}.i{ix}", first_missing.data, -1
     for ix, (i1, i2) in enumerate(zip(node_1.o, node_2.o)):
         for ii1, ii2 in zip(i1, i2):
             if ii1.ts > divergence[0]:
@@ -284,14 +281,52 @@ def find_divergence(name, vcd_1, vcd_2):
                 divergence = ii1.ts, ii2.ts, f"{name}.o{ix}", ii1.data, ii2.data
                 found = True
                 break
+        if len(i1) > len(i2):
+            first_missing = i1[len(i2)]
+            if first_missing.ts < divergence[0]:
+                found = True
+                divergence = first_missing.ts, -1, f"{name}.o{ix}", first_missing.data, -1
     if found:
         return divergence
 
+def analyze_binsearch_simple_early():
+    # finds the results for
+    vcd = vcdlib.Vcd("../cmake-build-debug/Vbinsearch_simple_early.vcd")
+
+    # get inputs so we have memory offsets
+    inputs = get_inputs(vcd)
+
+    table = Mem(vcd, "mem_0", inputs[0])
+    sorted = Mem(vcd, "mem_1", inputs[1])
+    result = Mem(vcd, "mem_2", inputs[2])
+
+    # check accesses to sorted
+    for i, (req, res) in enumerate(zip(sorted.reqs, sorted.ress)):
+        expected_value = req.addr//4*2
+        actual_value = res.data
+        assert expected_value == actual_value
+
+def find_hashtable_bug():
+    vcd = vcdlib.Vcd("../cmake-build-debug/Vhashtable_decouple3.vcd")
+    nodes = sorted(find_op_names(vcd.net_hier, "op_"))
+    ts1 = 3172
+    ts2 = 3176
+    for name in nodes:
+        if "HLS_MEM_REQ" in name:
+            continue
+        node = Node(vcd, name)
+        for op in node._get_ports("o"):
+            p1 =  node._port(op, ts1)
+            p2 =  node._port(op, ts2)
+            if (p1 is None) != (p2 is None):
+                print(name, op, p1, p2)
+
 
 def main():
+    find_hashtable_bug()
     # find_earliest_divergence()
-    find_stream_issue()
-
+    # find_stream_issue()
+    # analyze_binsearch_simple_early()
 
 if __name__ == '__main__':
     main()

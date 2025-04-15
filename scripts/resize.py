@@ -9,6 +9,7 @@ import tempfile
 import vcdlib
 import subprocess
 import pathlib
+import multiprocessing
 
 
 @dataclasses.dataclass
@@ -17,12 +18,15 @@ class RhlsBuf:
     width: int
     pass_through: bool
     id: int = 0
+
     def to_chisel(self):
         return f"emitVerilog(new RhlsBuf({self.depth}, {self.width}, {str(self.pass_through).lower()}))"
 
     @staticmethod
     def from_instance(buf: str):
-        match = re.match(r"op_HLS_BUF_(?P<pass_through>P_)?(?P<depth>\d+)_IN1_W(?P<width>\d+)_OUT1_W(?P=width)_(?P<id>\d+)", buf).groupdict()
+        match = re.match(
+            r"op_HLS_BUF_(?P<pass_through>P_)?(?P<depth>\d+)_IN1_W(?P<width>\d+)_OUT1_W(?P=width)_(?P<id>\d+)",
+            buf).groupdict()
         pass_through = bool(match["pass_through"])
         depth = int(match["depth"])
         width = int(match["width"])
@@ -43,12 +47,15 @@ class RhlsDecLoad:
     addr_width: int
     type_name: str
     id: int = 0
+
     def to_chisel(self):
         return f'emitVerilog(new RhlsDecLoad({self.depth}, {self.width}, {self.addr_width}, "{self.type_name}"))'
 
     @staticmethod
     def from_instance(buf: str):
-        match = re.match(r"op_HLS_DEC_LOAD_(?P<depth>\d+)_(?P<type_name>.+)_IN2_W(?P<width>\d+)_OUT2_W(?P<addr_width>\d+)_(?P<id>\d+)", buf).groupdict()
+        match = re.match(
+            r"op_HLS_DEC_LOAD_(?P<depth>\d+)_(?P<type_name>.+)_IN2_W(?P<width>\d+)_OUT2_W(?P<addr_width>\d+)_(?P<id>\d+)",
+            buf).groupdict()
         depth = int(match["depth"])
         width = int(match["width"])
         addr_width = int(match["addr_width"])
@@ -65,47 +72,55 @@ class RhlsDecLoad:
 
     def to_instance(self):
         return f"op_HLS_DEC_LOAD_{self.depth}_{self.type_name}_IN2_W{self.width}_OUT2_W{self.addr_width}_{self.id}"
-def find_sr_path(hier):
+
+
+def find_name_path(search_name: str, hier):
     for name, h in hier.items():
-        if name == "sr":
-            return (name, )
-        if path := find_sr_path(h):
-            return (name,)+path
+        if name == search_name:
+            return (name,)
+        if path := find_name_path(search_name, h):
+            return (name,) + path
+
 
 def to_pow2(x):
     if x:
-        return int(2**math.ceil(math.log2(x)))
+        return int(2 ** math.ceil(math.log2(x)))
     return 0
 
-def find_op_names(vcd: vcdlib.Vcd, name_contains: str):
-    sr_path = find_sr_path(vcd.net_hier)
-    hier = vcd.net_hier
-    for n in sr_path:
-        hier = hier[n]
-    result = []
-    for name in hier:
+
+def find_op_names(hier, name_contains: str):
+    res = []
+    for name, h in hier.items():
         if name_contains in name and "ready" not in name and "valid" not in name and "data" not in name:
-            result.append(name)
-    return result
+            res.append(name)
+        res.extend(find_op_names(h, name_contains))
+    return res
+
 
 @dataclasses.dataclass
 class RhlsAccelerator:
     verilog_path: pathlib.Path
+
     @property
     def vcd_path(self):
         return self.verilog_path.with_suffix(".vcd")
+
     @property
     def dot_path(self):
         return self.verilog_path.with_suffix(".dot")
+
     @property
     def cpp_path(self):
         return self.verilog_path.with_suffix(".harness.cpp")
+
     @property
     def cpp_axi_path(self):
         return self.verilog_path.with_suffix(".harness_axi.cpp")
+
     @property
     def object_path(self):
         return self.verilog_path.with_suffix(".o")
+
     @property
     def json_path(self):
         return self.verilog_path.with_suffix(".json")
@@ -118,18 +133,33 @@ class RhlsAccelerator:
     def log_path(self):
         return self.verilog_path.with_suffix(".log")
 
+    def remove(self):
+        self.verilog_path.unlink(True)
+        self.vcd_path.unlink(True)
+        self.dot_path.unlink(True)
+        self.cpp_path.unlink(True)
+        self.cpp_axi_path.unlink(True)
+        self.object_path.unlink(True)
+        self.json_path.unlink(True)
+        self.sim_path.unlink(True)
+        self.log_path.unlink(True)
+        # make sure everything is cleaned up
+        assert not list(self.verilog_path.parent.glob(self.verilog_path.with_suffix(".*").name))
+
     def build_sim(self, mem_latency: int = 100):
         print(f"building {self.sim_path}")
         HLS_TEST_ROOT = pathlib.Path("..").absolute()
         with tempfile.TemporaryDirectory() as tmpdir:
-            out = subprocess.run(f"""verilator --trace -CFLAGS -DTRACE_SIGNALS --cc --build --exe -Wno-WIDTH -j 12 -y {HLS_TEST_ROOT}/verilog_ops/float -y {HLS_TEST_ROOT}/verilog_ops/float/dpi -y {HLS_TEST_ROOT}/verilog_ops/buffer -y {HLS_TEST_ROOT}/verilog_ops/dec_load -Mdir {tmpdir}  -MAKEFLAGS CXX=g++ -CFLAGS -g --assert -CFLAGS " -fPIC" -o {self.sim_path.absolute()} {self.verilog_path.absolute()} {self.object_path.absolute()} {self.cpp_path.absolute()} {HLS_TEST_ROOT}/verilog_ops/float/dpi/float_dpi.cpp {HLS_TEST_ROOT}/src/decoupled/c_sim/hls_stream.cpp {HLS_TEST_ROOT}/src/decoupled/c_sim/hls_decouple.cpp -CFLAGS -DMEMORY_LATENCY={mem_latency}""", shell=True, check=True, capture_output=True)
+            out = subprocess.run(
+                f"""verilator --trace -CFLAGS -DTRACE_SIGNALS --cc --build --exe -Wno-WIDTH -j 12 -y {HLS_TEST_ROOT}/verilog_ops/float -y {HLS_TEST_ROOT}/verilog_ops/float/dpi -y {HLS_TEST_ROOT}/verilog_ops/buffer -y {HLS_TEST_ROOT}/verilog_ops/dec_load -Mdir {tmpdir}  -MAKEFLAGS CXX=g++ -CFLAGS -g --assert -CFLAGS " -fPIC" -o {self.sim_path.absolute()} {self.verilog_path.absolute()} {self.object_path.absolute()} {self.cpp_path.absolute()} {HLS_TEST_ROOT}/verilog_ops/float/dpi/float_dpi.cpp {HLS_TEST_ROOT}/src/decoupled/c_sim/hls_stream.cpp {HLS_TEST_ROOT}/src/decoupled/c_sim/hls_decouple.cpp -CFLAGS -DMEMORY_LATENCY={mem_latency}""",
+                shell=True, check=True, capture_output=True)
             assert self.sim_path.exists()
         return self.sim_path
 
     def run_sim(self):
         print(f"running {self.sim_path}")
         assert self.sim_path.exists()
-        out = subprocess.run(self.sim_path, capture_output = True, text = True)
+        out = subprocess.run(self.sim_path, capture_output=True, text=True)
         assert out.returncode == 0
         cycles = re.findall("finished - took ([0-9]+) cycles", out.stdout)
         assert len(cycles) == 1
@@ -140,7 +170,7 @@ class RhlsAccelerator:
         vcd.replace(new_vcd)
         return cycles
 
-    def upsize_buffers(self, buffer_size: int=256):
+    def upsize_buffers(self, buffer_size: int = 256):
         verilog = self.verilog_path.read_text()
         dot = self.dot_path.read_text()
         buffer_matches = sorted(re.findall(r'((op_HLS_BUF_[^\s]+)\s+(op_HLS_BUF_[^\s]+))\s*\(', verilog))
@@ -161,15 +191,15 @@ class RhlsAccelerator:
 
     def resize_buffers(self):
         vcd = vcdlib.Vcd(self.vcd_path)
-        sr_path = find_sr_path(vcd.net_hier)
-        hier = vcd.net_hier
-        for p in sr_path:
-            hier = hier[p]
-        bufs = find_op_names(vcd, "op_HLS_BUF")
+        verilog = self.verilog_path.read_text()
+        bufs = find_op_names(vcd.net_hier, "op_HLS_BUF")
+        buffer_matches = sorted(re.findall(r'((op_HLS_BUF_[^\s]+)\s+(op_HLS_BUF_[^\s]+))\s*\(', verilog))
+        assert sorted(bufs) == sorted(instance for instantiation, module, instance in buffer_matches)
         buf_depths = {}
         for buf in bufs:
+            node_path = find_name_path(buf, vcd.net_hier)
             # this requires using chisel bufs with a queue that exposes a count
-            count_path = sr_path + (buf, "queue", "io_count")
+            count_path = node_path + ("queue", "io_count")
             count_vcd = vcd[count_path]
             depth = max((int(val, 2) for ts, val in count_vcd.time_series if ts > vcd.start_time), default=0)
             buf_depths[buf] = depth
@@ -185,23 +215,25 @@ class RhlsAccelerator:
             #     # assert empty == time_steps
             # empty_frac = empty/time_steps
         # pprint.pprint(buf_depths)
-        loads = find_op_names(vcd, "op_HLS_DEC_LOAD")
+        loads = find_op_names(vcd.net_hier, "op_HLS_DEC_LOAD")
+        load_matches = sorted(re.findall(r'((op_HLS_DEC_LOAD_[^\s]+)\s+(op_HLS_DEC_LOAD_[^\s]+))\s*\(', verilog))
+        assert sorted(loads) == sorted(instance for instantiation, module, instance in load_matches)
         load_depths = {}
         for load in loads:
+            node_path = find_name_path(load, vcd.net_hier)
             # this requires using chisel bufs with a queue that exposes a count
-            count_path = sr_path + (load, "request_in_flight", "io_count")
+            count_path = node_path + ("request_in_flight", "io_count")
             count_vcd = vcd[count_path]
             depth = max((int(val, 2) for ts, val in count_vcd.time_series if ts > vcd.start_time), default=0)
             load_depths[load] = depth
         # pprint.pprint(load_depths)
-        verilog = self.verilog_path.read_text()
         dot = self.dot_path.read_text()
         needed_ops = []
         for buf, depth in buf_depths.items():
             rb = RhlsBuf.from_instance(buf)
             if rb.pass_through:
                 # we need one more depth somewhere along the path to guarantee good performance
-                depth = min(depth+1, rb.depth)
+                depth = min(depth + 1, rb.depth)
                 # empty or small pass-through buffers are fine
                 # todo: can lead to deadlocks for rif loop
                 pass
@@ -210,7 +242,7 @@ class RhlsAccelerator:
                 if depth < 2:
                     depth = 2
                 else:
-                    depth = min(depth+1, rb.depth)
+                    depth = min(depth + 1, rb.depth)
             depth = to_pow2(depth)
             nrb, dot, verilog = self._resize_buf(buf, depth, dot, verilog)
             needed_ops.append(nrb.to_chisel())
@@ -265,38 +297,56 @@ class RhlsAccelerator:
         new_instantiation = nrl.to_module() + " " + nrl.to_instance() + " "
         assert old_instantiation in verilog
         verilog = verilog.replace(old_instantiation, new_instantiation)
-        verilog = verilog.replace(rl.to_instance()+".", nrl.to_instance()+".")
-        dot = dot.replace(rl.to_instance()+" ", nrl.to_instance()+" ")
-        dot = dot.replace(rl.to_instance()+"<", nrl.to_instance()+"<")
-        dot = dot.replace(rl.to_instance()+":", nrl.to_instance()+":")
+        verilog = verilog.replace(rl.to_instance() + ".", nrl.to_instance() + ".")
+        dot = dot.replace(rl.to_instance() + " ", nrl.to_instance() + " ")
+        dot = dot.replace(rl.to_instance() + "<", nrl.to_instance() + "<")
+        dot = dot.replace(rl.to_instance() + ":", nrl.to_instance() + ":")
         return nrl, dot, verilog
 
 
 build_folder = pathlib.Path("../build")
 
+
+def resize(verilog: pathlib.Path):
+    print("starting", verilog)
+    acc = RhlsAccelerator(verilog)
+    up_acc = acc.upsize_buffers(128)
+    up_acc.build_sim()
+    up_cycles = up_acc.run_sim()
+    print(verilog, up_cycles, "cycles")
+    # assert up_cycles <= cycles
+    re_acc = up_acc.resize_buffers()
+    up_acc.remove()
+
+
+def downsize(verilog: pathlib.Path):
+    print("starting", verilog)
+    acc = RhlsAccelerator(verilog)
+    acc.build_sim()
+    cycles = acc.run_sim()
+    print(verilog, cycles, "cycles")
+    re_acc = acc.resize_buffers()
+
+    # re_acc.build_sim()
+    # re_cycles = re_acc.run_sim()
+    # print(re_acc.verilog_path, re_cycles, "cycles")
+
+
 def main():
-    verilogs = list(build_folder.glob("*/*.hls.v"))
-    # verilogs = [build_folder / "decoupled" / "test_sum.hls.v"]
+    verilogs = sorted(build_folder.glob("decoupled/*.hls.v"))
+    targets = []
     for verilog in verilogs:
         if verilog.suffixes[0] != ".hls":
             continue
         acc = RhlsAccelerator(verilog)
-        acc.build_sim()
-        cycles = acc.run_sim()
-        dn_acc = acc.resize_buffers()
-        dn_acc.build_sim()
-        dn_cycles = dn_acc.run_sim()
-        # assert cycles == dn_cycles
-        up_acc = acc.upsize_buffers()
-        up_acc.build_sim()
-        up_cycles = up_acc.run_sim()
-        # assert up_cycles <= cycles
-        re_acc = up_acc.resize_buffers()
-        re_acc.build_sim()
-        re_cycles = re_acc.run_sim()
-        # assert re_cycles == up_cycles
-        pass
+        if acc.get_suffix_variant(".downsize").verilog_path.exists():
+            print(f"skipping {acc.sim_path}")
+            continue
+        targets.append(verilog)
 
+    pool = multiprocessing.Pool(8)
+    pool.map(downsize, targets, chunksize=1)
+    pool.close()
 
 
 if __name__ == '__main__':

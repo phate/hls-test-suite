@@ -129,6 +129,7 @@ HLS_TEST_BASE_FILES = \
 	base/test_float \
 	base/test_float2 \
 	base/test_vector \
+	base/test_addrq \
 
 #	disabled for now, because decouple-mem-state does not work with localmem/alloca - should be re-done anyway
 #	base/test_cpu \
@@ -183,6 +184,7 @@ HLS_TEST_DECOUPLED_FILES = \
 
 .PHONY: hls-test-decoupled
 hls-test-decoupled: VERILATOR_EXTRA_FLAGS = $(HLS_TEST_SRC)/decoupled/c_sim/hls_stream.cpp $(HLS_TEST_SRC)/decoupled/c_sim/hls_decouple.cpp -CFLAGS -DMEMORY_LATENCY=100
+hls-test-decoupled: HLS_TEST_ADDITIONAL_FLAGS = -J--latency=100
 hls-test-decoupled: $(patsubst %, hls-test/%, $(HLS_TEST_DECOUPLED_FILES))
 
 HLS_TEST_POLYBENCH_FILES = \

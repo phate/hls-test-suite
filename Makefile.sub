@@ -274,6 +274,20 @@ HLS_TEST_BENCHMARK_FILES = \
 hls-test-benchmark: $(patsubst %, hls-test/%, $(HLS_TEST_BENCHMARK_FILES))
 
 
+# Update golden cycles
+.PHONY: update-golden-file/%
+update-golden-file/%: $(HLS_TEST_BUILD)/%.hls.log
+	set -e ; \
+	CYCLES=$$(grep 'finished - took' $< | tr -dc '0-9') ; \
+        echo "$${CYCLES}" > $(HLS_TEST_SRC)/$*.cycles
+
+.PHONY: update-golden
+update-golden: $(patsubst %, update-golden-file/%, $(HLS_TEST_BASE_FILES))
+update-golden: $(patsubst %, update-golden-file/%, $(HLS_TEST_POLYBENCH_FILES))
+update-golden: $(patsubst %, update-golden-file/%, $(HLS_TEST_DYNAMATIC_FILES))
+update-golden: $(patsubst %, update-golden-file/%, $(HLS_TEST_BENCHMARK_FILES))
+update-golden: $(patsubst %, update-golden-file/%, $(HLS_TEST_DECOUPLED_FILES))
+
 .PHONY: hls-test-clean
 hls-test-clean:
 	@rm -rf $(HLS_TEST_BUILD)

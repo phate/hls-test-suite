@@ -49,7 +49,7 @@ $(HLS_TEST_BUILD)/%.hls: $(HLS_TEST_SRC)/%.c
 	VERILATOR_TMP_DIR=`mktemp -d` ; \
 	trap "rm -r $$VERILATOR_TMP_DIR" EXIT ; \
 	VERILATOR_ROOT=/usr/share/verilator ; \
-	verilator_bin $(VERILATOR_TRACE) --cc --build --exe -Wno-WIDTH -Mdir $$VERILATOR_TMP_DIR -MAKEFLAGS CXX=g++ -CFLAGS -g --assert -CFLAGS " -fPIC" -o $@ $@.v $@.o $@.harness.cpp > /dev/null
+	verilator_bin $(VERILATOR_TRACE) --cc --build --exe -Wno-WIDTH -y $(HLS_TEST_ROOT)/verilog_ops/float -y $(HLS_TEST_ROOT)/verilog_ops/float/dpi -y $(HLS_TEST_ROOT)/verilog_ops/buffer -y $(HLS_TEST_ROOT)/verilog_ops/dec_load -Mdir $$VERILATOR_TMP_DIR -MAKEFLAGS CXX=g++ -CFLAGS -g --assert -CFLAGS " -fPIC" -o $@ $@.v $@.o $@.harness.cpp $(HLS_TEST_ROOT)/verilog_ops/float/dpi/float_dpi.cpp $(VERILATOR_EXTRA_FLAGS) > /dev/null
 
 # Execute the program, placing its output in %.hls.log
 .PRECIOUS: $(HLS_TEST_BUILD)/%.hls.log
@@ -108,7 +108,8 @@ hls-test-all: \
 	hls-test-base \
 	hls-test-benchmark \
 	hls-test-polybench \
-	hls-test-dynamatic
+	hls-test-dynamatic \
+	hls-test-decoupled
 
 
 HLS_TEST_BASE_FILES = \
@@ -118,14 +119,74 @@ HLS_TEST_BASE_FILES = \
 	base/test_nested_loops \
 	base/test_conditional \
 	base/test_load \
+	base/test_store_loop \
+	base/test_store_loop_cond \
+	base/test_store_loop_cond2 \
 	base/test_array \
 	base/test_gep \
 	base/test_global \
 	base/test_matrix \
-	base/test_cpu \
+	base/test_float \
+	base/test_float2 \
+	base/test_vector \
+	base/test_addrq \
+
+#	disabled for now, because decouple-mem-state does not work with localmem/alloca - should be re-done anyway
+#	base/test_cpu \
 
 .PHONY: hls-test-base
 hls-test-base: $(patsubst %, hls-test/%, $(HLS_TEST_BASE_FILES))
+
+HLS_TEST_DECOUPLED_FILES = \
+	decoupled/test_stream \
+	decoupled/test_sum \
+	decoupled/test_sum_int \
+	decoupled/test_sum_stream \
+	decoupled/test_sum_decouple \
+	decoupled/test_sum_decouple2 \
+	decoupled/test_indirection \
+	decoupled/test_indirection_stream \
+	decoupled/test_indirection_decouple \
+	decoupled/test_multi_sum_decouple \
+	decoupled/spmv_simple \
+	decoupled/spmv_stream \
+	decoupled/spmv_decouple \
+	decoupled/spmv_decouple_naive \
+	decoupled/multi_spmv_simple \
+	decoupled/multi_spmv_decouple \
+	decoupled/hashtable_simple \
+	decoupled/binsearch_simple \
+	decoupled/binsearch_simple_for \
+	decoupled/binsearch_simple_early \
+	decoupled/binsearch_simple_early2 \
+	decoupled/mergesort_simple \
+	decoupled/mergesort_simple2 \
+	decoupled/mergesort_decouple \
+	decoupled/mergesort_decouple2 \
+	decoupled/mergesort_decouple3 \
+	decoupled/mergesort_decouple4 \
+
+# Disabled as the cause problems when runing with ./scripts/run-hls-test.sh
+#	decoupled/binsearch_decouple \
+	decoupled/hashtable_decouple \
+	decoupled/hashtable_decouple2 \
+	decoupled/hashtable_stream \
+	decoupled/binsearch_decouple_rif_for \
+	decoupled/binsearch_decouple_rif_while \
+	decoupled/binsearch_decouple_rif_while5 \
+	decoupled/binsearch_decouple_rif_while2 \
+	decoupled/binsearch_decouple_rif_while3 \
+	decoupled/binsearch_decouple_rif_while4 \
+	decoupled/binsearch_stream \
+	decoupled/binsearch_stream_rif_while2 \
+
+# directly returning a decouple result is not supported at the moment due to lacking smap support of ReplaceDecouple in mem-conv
+#	decoupled/test_decouple_no_loop \
+
+.PHONY: hls-test-decoupled
+hls-test-decoupled: VERILATOR_EXTRA_FLAGS = $(HLS_TEST_SRC)/decoupled/c_sim/hls_stream.cpp $(HLS_TEST_SRC)/decoupled/c_sim/hls_decouple.cpp -CFLAGS -DMEMORY_LATENCY=100
+hls-test-decoupled: HLS_TEST_ADDITIONAL_FLAGS = -J--latency=100
+hls-test-decoupled: $(patsubst %, hls-test/%, $(HLS_TEST_DECOUPLED_FILES))
 
 HLS_TEST_POLYBENCH_FILES = \
 	polybench/correlation \
@@ -212,6 +273,20 @@ HLS_TEST_BENCHMARK_FILES = \
 .PHONY: hls-test-benchmark
 hls-test-benchmark: $(patsubst %, hls-test/%, $(HLS_TEST_BENCHMARK_FILES))
 
+
+# Update golden cycles
+.PHONY: update-golden-file/%
+update-golden-file/%: $(HLS_TEST_BUILD)/%.hls.log
+	set -e ; \
+	CYCLES=$$(grep 'finished - took' $< | tr -dc '0-9') ; \
+        echo "$${CYCLES}" > $(HLS_TEST_SRC)/$*.cycles
+
+.PHONY: update-golden
+update-golden: $(patsubst %, update-golden-file/%, $(HLS_TEST_BASE_FILES))
+update-golden: $(patsubst %, update-golden-file/%, $(HLS_TEST_POLYBENCH_FILES))
+update-golden: $(patsubst %, update-golden-file/%, $(HLS_TEST_DYNAMATIC_FILES))
+update-golden: $(patsubst %, update-golden-file/%, $(HLS_TEST_BENCHMARK_FILES))
+update-golden: $(patsubst %, update-golden-file/%, $(HLS_TEST_DECOUPLED_FILES))
 
 .PHONY: hls-test-clean
 hls-test-clean:

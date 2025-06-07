@@ -25,6 +25,9 @@ run: hls-test-all
 .PHONY: run-base
 run-base: hls-test-base
 
+.PHONY: run-decoupled
+run-decoupled: hls-test-decoupled
+
 .PHONY: run-dynamaitc
 run-dynamiatic: hls-test-dynamatic
 

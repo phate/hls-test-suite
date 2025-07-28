@@ -74,6 +74,8 @@ cycle-compare/%: $(HLS_TEST_BUILD)/%.hls.log $(HLS_TEST_SRC)/%.cycles
 	    echo "  Simulated cycles: $${CYCLES}" >> $(HLS_TEST_BUILD)/cycle-diff.log ; \
 	    # FIXME: Change to 'exit 1' once jlm becomes deterministic; \
 	    exit 0 ; \
+        else \
+          echo   "    Executed cycles (=$${CYCLES}) correspond to golden cycles (=$$(cat $(HLS_TEST_SRC)/$*.cycles))" ; \
 	fi
 
 # Compile the program using gcc, execute it, and place its output in %.gcc.log

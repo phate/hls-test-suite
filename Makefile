@@ -28,8 +28,8 @@ run-base: hls-test-base
 .PHONY: run-decoupled
 run-decoupled: hls-test-decoupled
 
-.PHONY: run-dynamaitc
-run-dynamiatic: hls-test-dynamatic
+.PHONY: run-dynamatic
+run-dynamatic: hls-test-dynamatic
 
 .PHONY: run-polybench
 run-polybench: hls-test-polybench

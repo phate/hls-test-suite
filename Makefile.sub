@@ -72,8 +72,7 @@ cycle-compare/%: $(HLS_TEST_BUILD)/%.hls.log $(HLS_TEST_SRC)/%.cycles
 	    echo "The execution time of $* has changed" >> $(HLS_TEST_BUILD)/cycle-diff.log ; \
 	    echo "  Golden cycle time: $${GOLDEN}" >> $(HLS_TEST_BUILD)/cycle-diff.log ; \
 	    echo "  Simulated cycles: $${CYCLES}" >> $(HLS_TEST_BUILD)/cycle-diff.log ; \
-	    # FIXME: Change to 'exit 1' once jlm becomes deterministic; \
-	    exit 0 ; \
+	    exit 1 ; \
         else \
           echo   "    Executed cycles match golden cycles ($${CYCLES}==$${GOLDEN})" ; \
 	fi

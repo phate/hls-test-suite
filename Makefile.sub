@@ -224,6 +224,7 @@ HLS_TEST_DYNAMATIC_FILES = \
 	dynamatic/test_memory_2 \
 	dynamatic/test_memory_3 \
 	dynamatic/test_memory_4 \
+	dynamatic/test_memory_5 \
 	dynamatic/test_memory_6 \
 	dynamatic/test_memory_7 \
 	dynamatic/test_memory_8 \
@@ -250,9 +251,6 @@ HLS_TEST_DYNAMATIC_FILES = \
 	dynamatic/gcd \
 	dynamatic/polyn_mult \
 	dynamatic/sobel \
-# test_memory_5 causes non-determenistic cycle counts. It should
-# be enabled once a determenistic traverser has been implemented
-#	dynamatic/test_memory_5 \
 
 .PHONY: hls-test-dynamatic
 hls-test-dynamatic: $(patsubst %, hls-test-with-gcc/%, $(HLS_TEST_DYNAMATIC_FILES))
@@ -279,7 +277,7 @@ hls-test-benchmark: $(patsubst %, hls-test/%, $(HLS_TEST_BENCHMARK_FILES))
 # Update golden cycles
 .PHONY: update-golden-file/%
 update-golden-file/%: $(HLS_TEST_BUILD)/%.hls.log
-	set -e ; \
+	@set -e ; \
 	CYCLES=$$(grep 'finished - took' $< | tr -dc '0-9') ; \
         echo "$${CYCLES}" > $(HLS_TEST_SRC)/$*.cycles
 
